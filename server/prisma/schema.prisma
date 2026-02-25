@@ -1,0 +1,55 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  passwordHash String?
+  fpCode       String        @unique
+  balance      Float         @default(0.0)
+  iban         String?
+  createdAt    DateTime      @default(now())
+
+  entries      Entry[]
+  transactions Transaction[]
+  votes        Vote[]
+}
+
+model Entry {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  imageUrl    String
+  description String?
+  weekNumber  Int
+  createdAt   DateTime @default(now())
+
+  votes       Vote[]
+}
+
+model Vote {
+  id         Int      @id @default(autoincrement())
+  voterId    Int
+  voter      User     @relation(fields: [voterId], references: [id])
+  entryId    Int
+  entry      Entry    @relation(fields: [entryId], references: [id])
+  weekNumber Int
+  createdAt  DateTime @default(now())
+}
+
+model Transaction {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  txType     String   // 'deposit', 'withdraw', 'entry_fee'
+  amount     Float
+  status     String   @default("completed") // 'pending', 'completed', 'failed'
+  externalId String?
+  createdAt  DateTime @default(now())
+}
