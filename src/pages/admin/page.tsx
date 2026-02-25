@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import {
   ChevronDown,
   ChevronRight,
@@ -12,6 +12,7 @@ import {
   Eye,
   Clock,
   X,
+  Loader2,
 } from "lucide-react"
 import type {
   MagazineEdition,
@@ -20,12 +21,9 @@ import type {
   ArticleData,
 } from "@/lib/magazine-store"
 import {
-  getAllEditions,
   getDefaultTemplate,
-  saveEdition,
-  publishEdition,
-  deleteEdition,
 } from "@/lib/magazine-store"
+import { api, SiteSettings } from "@/lib/api"
 
 // ---- Collapsible Section ----
 
@@ -214,18 +212,31 @@ export default function AdminPage() {
   const [confirmPublish, setConfirmPublish] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const refreshEditions = useCallback(() => {
-    const all = getAllEditions()
-    setEditions(all)
-    return all
+  // Global Settings state
+  const [settings, setSettings] = useState<SiteSettings | null>(null)
+  const [settingsLoading, setSettingsLoading] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+
+  const refreshEditions = useCallback(async () => {
+    const data = await api.getEditions()
+    if (!("error" in data)) {
+      setEditions(data)
+      return data
+    }
+    return []
   }, [])
 
   useEffect(() => {
     refreshEditions()
+
+    // Fetch global settings
+    api.getSettings().then((data) => {
+      if (!("error" in data)) setSettings(data)
+    }).catch(console.error)
   }, [refreshEditions])
 
-  function selectEdition(id: string) {
-    const all = refreshEditions()
+  async function selectEdition(id: string) {
+    const all = await refreshEditions()
     const found = all.find((e) => e.id === id)
     if (found) {
       setEdition(structuredClone(found))
@@ -234,11 +245,11 @@ export default function AdminPage() {
     }
   }
 
-  function createNewEdition() {
+  async function createNewEdition() {
     const maxNum = editions.reduce((m, e) => Math.max(m, e.editionNumber), 0)
     const template = getDefaultTemplate(maxNum + 1)
-    saveEdition(template)
-    const all = refreshEditions()
+    await api.saveEdition(template)
+    const all = await refreshEditions()
     const found = all.find((e) => e.id === template.id)
     if (found) {
       setEdition(structuredClone(found))
@@ -247,19 +258,19 @@ export default function AdminPage() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!edition) return
-    saveEdition(edition)
-    refreshEditions()
+    await api.saveEdition(edition)
+    await refreshEditions()
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  function handlePublish() {
+  async function handlePublish() {
     if (!edition) return
-    saveEdition(edition)
-    publishEdition(edition.id)
-    const all = refreshEditions()
+    await api.saveEdition(edition)
+    await api.publishEdition(edition.id)
+    const all = await refreshEditions()
     const found = all.find((e) => e.id === edition.id)
     if (found) {
       setEdition(structuredClone(found))
@@ -267,10 +278,10 @@ export default function AdminPage() {
     setConfirmPublish(false)
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!edition) return
-    deleteEdition(edition.id)
-    refreshEditions()
+    await api.deleteEdition(edition.id)
+    await refreshEditions()
     setEdition(null)
     setActiveId(null)
     setConfirmDelete(false)
@@ -416,6 +427,27 @@ export default function AdminPage() {
     setSaved(false)
   }
 
+  // ---- Settings Handlers ----
+  function updateSetting(key: keyof SiteSettings, value: any) {
+    if (!settings) return
+    setSettings({ ...settings, [key]: value })
+    setSettingsSaved(false)
+  }
+
+  async function handleSaveSettings() {
+    if (!settings) return
+    setSettingsLoading(true)
+    try {
+      await api.updateSettings(settings)
+      setSettingsSaved(true)
+      setTimeout(() => setSettingsSaved(false), 2000)
+    } catch {
+      alert("Failed to save settings")
+    } finally {
+      setSettingsLoading(false)
+    }
+  }
+
   // ---- No edition selected: show edition list ----
   if (!edition) {
     const publishedEdition = editions.find((e) => e.status === "published")
@@ -477,13 +509,13 @@ export default function AdminPage() {
           </div>
 
           {/* New Edition */}
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mt-12">
             <h2 className="font-serif text-2xl font-bold uppercase tracking-tight text-foreground">
               All Editions
             </h2>
             <button
               onClick={createNewEdition}
-              className="flex items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
+              className="flex items-center justify-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 min-w-[140px]"
             >
               <Plus className="h-4 w-4" />
               New Edition
@@ -548,6 +580,55 @@ export default function AdminPage() {
                 ))}
             </div>
           )}
+
+          {/* Global App Settings Section outside of editions */}
+          <div className="mt-16 mb-6">
+            <h2 className="font-serif text-2xl font-bold uppercase tracking-tight text-foreground mb-4">
+              Global Configuration
+            </h2>
+            {settings ? (
+              <div className="rounded-sm border border-border bg-card p-6 shadow-sm">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <NumberInput
+                    label="Contest Entry Fee ($)"
+                    value={settings.entryFee || 1000}
+                    onChange={(v) => updateSetting("entryFee", v)}
+                    min={0}
+                  />
+                  <NumberInput
+                    label="Current Active Week"
+                    value={settings.currentWeek || 1}
+                    onChange={(v) => updateSetting("currentWeek", v)}
+                    min={1}
+                  />
+                  <TextInput
+                    label="API Key (For Webhooks)"
+                    value={settings.apiKey || ""}
+                    onChange={(v) => updateSetting("apiKey", v)}
+                  />
+                  <TextInput
+                    label="Withdraw Webhook URL"
+                    value={settings.withdrawUrl || ""}
+                    onChange={(v) => updateSetting("withdrawUrl", v)}
+                  />
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={settingsLoading}
+                    className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {settingsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (settingsSaved ? <span className="flex items-center gap-1 text-green-700">Saved!</span> : "Save Settings")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-center p-8 border border-border rounded-sm bg-card">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     )

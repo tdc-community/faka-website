@@ -14,9 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 // --- CONFIGURATION ---
-const SHARED_API_KEY = "vashiat_super_taen_klyuch_tuka";
-const GAME_SERVER_WITHDRAW_URL = "http://ip_na_survura/api/withdraw"; // Mock URL
-const ENTRY_FEE = 1000.0;
+// Removed hardcoded constants - using SiteSettings from DB
 
 // Configure Multer for image uploads
 const storage = multer.diskStorage({
@@ -41,7 +39,46 @@ function generateFpCode(length: number = 6): string {
     return result;
 }
 
+async function getSiteSettings() {
+    let settings = await prisma.siteSettings.findFirst();
+    if (!settings) {
+        settings = await prisma.siteSettings.create({ data: {} }); // Creates with schema defaults
+    }
+    return settings;
+}
+
 // --- API ENDPOINTS ---
+
+// ADMIN: GET SETTINGS
+app.get("/api/admin/settings", async (req, res) => {
+    try {
+        const settings = await getSiteSettings();
+        res.status(200).json(settings);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch settings" });
+    }
+});
+
+// ADMIN: UPDATE SETTINGS
+app.post("/api/admin/settings", async (req, res) => {
+    try {
+        const { entryFee, apiKey, withdrawUrl, currentWeek } = req.body;
+        const current = await getSiteSettings();
+
+        const updated = await prisma.siteSettings.update({
+            where: { id: current.id },
+            data: {
+                entryFee: entryFee !== undefined ? parseFloat(entryFee) : undefined,
+                apiKey: apiKey !== undefined ? String(apiKey) : undefined,
+                withdrawUrl: withdrawUrl !== undefined ? String(withdrawUrl) : undefined,
+                currentWeek: currentWeek !== undefined ? parseInt(currentWeek) : undefined,
+            }
+        });
+        res.status(200).json({ message: "Settings updated successfully", settings: updated });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update settings" });
+    }
+});
 
 // 0. GET USER INFO
 app.get("/api/user/:username", async (req, res) => {
@@ -100,8 +137,9 @@ app.post("/api/register", async (req, res) => {
 // 2. DEPOSIT (Webhook from Game Server)
 app.post("/api/deposit", async (req, res) => {
     const { amount, code, apiKey } = req.body;
+    const settings = await getSiteSettings();
 
-    if (!apiKey || apiKey !== SHARED_API_KEY) {
+    if (!apiKey || apiKey !== settings.apiKey) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -164,16 +202,18 @@ app.post("/api/frontend/withdraw", async (req, res) => {
         }
     });
 
+    const settings = await getSiteSettings();
+
     const payload = {
         amount: amountToWithdraw,
         withdrawId,
         iban: iban,
-        apiKey: SHARED_API_KEY
+        apiKey: settings.apiKey
     };
 
     try {
         // We simulate the fetch here, normally it would be something like:
-        // const response = await fetch(GAME_SERVER_WITHDRAW_URL, { method: "POST", body: JSON.stringify(payload) });
+        // const response = await fetch(settings.withdrawUrl, { method: "POST", body: JSON.stringify(payload) });
 
         // Simulating a game server failure as in the test
         const response = { ok: false, status: 503 };
@@ -218,9 +258,10 @@ app.post("/api/entries", upload.single('image'), async (req, res) => {
     }
 
     const user = await prisma.user.findUnique({ where: { id: parseInt(user_id) } });
+    const settings = await getSiteSettings();
 
-    if (!user || user.balance < ENTRY_FEE) {
-        return res.status(400).json({ error: `Insufficient balance. Entry fee is $${ENTRY_FEE}.` });
+    if (!user || user.balance < settings.entryFee) {
+        return res.status(400).json({ error: `Insufficient balance. Entry fee is $${settings.entryFee}.` });
     }
 
     try {
@@ -228,7 +269,7 @@ app.post("/api/entries", upload.single('image'), async (req, res) => {
             // 1. Deduct fee
             await tx.user.update({
                 where: { id: user.id },
-                data: { balance: { decrement: ENTRY_FEE } }
+                data: { balance: { decrement: settings.entryFee } }
             });
 
             // 2. Log transaction
@@ -236,18 +277,18 @@ app.post("/api/entries", upload.single('image'), async (req, res) => {
                 data: {
                     userId: user.id,
                     txType: "entry_fee",
-                    amount: ENTRY_FEE,
+                    amount: settings.entryFee,
                     status: "completed"
                 }
             });
 
-            // 3. Create entry (Week 1 hardcoded for now)
+            // 3. Create entry
             await tx.entry.create({
                 data: {
                     userId: user.id,
                     imageUrl: `/uploads/${file.filename}`, // Relative path for Vite
                     description: description || "",
-                    weekNumber: 1
+                    weekNumber: settings.currentWeek
                 }
             });
         });
@@ -261,7 +302,12 @@ app.post("/api/entries", upload.single('image'), async (req, res) => {
 
 // 5. GET ENTRIES (Gallery)
 app.get("/api/entries", async (req, res) => {
-    const weekNumber = parseInt((req.query.week as string) || "1");
+    let weekNumber = parseInt(req.query.week as string);
+    if (isNaN(weekNumber)) {
+        const settings = await getSiteSettings();
+        weekNumber = settings.currentWeek;
+    }
+
     const entries = await prisma.entry.findMany({
         where: { weekNumber },
         include: {
@@ -285,6 +331,69 @@ app.get("/api/entries", async (req, res) => {
     res.status(200).json(formatted);
 });
 
+// 5.5. CANCEL ENTRY
+app.delete("/api/entries/:id", async (req, res) => {
+    const entryId = parseInt(req.params.id);
+    const { user_id } = req.body;
+
+    if (!user_id || isNaN(entryId)) {
+        return res.status(400).json({ error: "Missing Entry ID or User ID" });
+    }
+
+    const entry = await prisma.entry.findUnique({
+        where: { id: entryId },
+        include: { user: true }
+    });
+
+    if (!entry) {
+        return res.status(404).json({ error: "Entry not found" });
+    }
+
+    if (entry.userId !== parseInt(user_id)) {
+        return res.status(401).json({ error: "Unauthorized: You do not own this entry" });
+    }
+
+    try {
+        const settings = await getSiteSettings();
+
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete associated votes (cascade)
+            await tx.vote.deleteMany({
+                where: { entryId }
+            });
+
+            // 2. Delete the entry
+            await tx.entry.delete({
+                where: { id: entryId }
+            });
+
+            // 3. Refund the user
+            await tx.user.update({
+                where: { id: entry.userId },
+                data: { balance: { increment: settings.entryFee } }
+            });
+
+            // 4. Log refund transaction
+            await tx.transaction.create({
+                data: {
+                    userId: entry.userId,
+                    txType: "refund",
+                    amount: settings.entryFee,
+                    status: "completed"
+                }
+            });
+        });
+
+        // Optional: We can delete the file from the disk here using fs.unlinkSync or fs.promises.unlink
+        // but for simplicity, we'll leave it in uploads for now.
+
+        return res.status(200).json({ message: "Entry cancelled and entry fee refunded!" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Failed to cancel entry." });
+    }
+});
+
 // 6. VOTE
 app.post("/api/vote", async (req, res) => {
     const { voter_id, entry_id, week_number } = req.body;
@@ -293,8 +402,14 @@ app.post("/api/vote", async (req, res) => {
         return res.status(400).json({ error: "Voter ID and Entry ID required." });
     }
 
+    let targetWeek = parseInt(week_number);
+    if (isNaN(targetWeek)) {
+        const settings = await getSiteSettings();
+        targetWeek = settings.currentWeek;
+    }
+
     const existingVote = await prisma.vote.findFirst({
-        where: { voterId: parseInt(voter_id), weekNumber: parseInt(week_number || "1") }
+        where: { voterId: parseInt(voter_id), weekNumber: targetWeek }
     });
 
     if (existingVote) {
@@ -306,12 +421,121 @@ app.post("/api/vote", async (req, res) => {
             data: {
                 voterId: parseInt(voter_id),
                 entryId: parseInt(entry_id),
-                weekNumber: parseInt(week_number || "1")
+                weekNumber: targetWeek
             }
         });
         return res.status(201).json({ message: "Vote cast successfully!", vote: newVote });
     } catch (err) {
         return res.status(500).json({ error: "Failed to cast vote." });
+    }
+});
+
+// --- MAGAZINE EDITIONS ---
+
+// GET ALL EDITIONS
+app.get("/api/editions", async (req, res) => {
+    try {
+        const editions = await prisma.magazineEdition.findMany({
+            orderBy: { editionNumber: 'desc' }
+        });
+        const formatted = editions.map(e => ({
+            id: e.id,
+            editionNumber: e.editionNumber,
+            status: e.status,
+            createdAt: e.createdAt,
+            publishedAt: e.publishedAt,
+            ...JSON.parse(e.content)
+        }));
+        res.status(200).json(formatted);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch editions" });
+    }
+});
+
+// GET PUBLISHED EDITION
+app.get("/api/editions/published", async (req, res) => {
+    try {
+        const edition = await prisma.magazineEdition.findFirst({
+            where: { status: 'published' }
+        });
+        if (!edition) return res.status(404).json({ error: "No published edition found" });
+
+        const formatted = {
+            id: edition.id,
+            editionNumber: edition.editionNumber,
+            status: edition.status,
+            createdAt: edition.createdAt,
+            publishedAt: edition.publishedAt,
+            ...JSON.parse(edition.content)
+        };
+        res.status(200).json(formatted);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch published edition" });
+    }
+});
+
+// UPSERT EDITION
+app.post("/api/editions", async (req, res) => {
+    try {
+        const { id, editionNumber, status, createdAt, publishedAt, ...rest } = req.body;
+
+        let edition = await prisma.magazineEdition.findUnique({ where: { id } });
+
+        if (edition) {
+            edition = await prisma.magazineEdition.update({
+                where: { id },
+                data: {
+                    editionNumber: Number(editionNumber),
+                    status,
+                    content: JSON.stringify(rest)
+                }
+            });
+        } else {
+            edition = await prisma.magazineEdition.create({
+                data: {
+                    id,
+                    editionNumber: Number(editionNumber),
+                    status,
+                    content: JSON.stringify(rest)
+                }
+            });
+        }
+        res.status(200).json(edition);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to save edition" });
+    }
+});
+
+// PUBLISH EDITION
+app.post("/api/editions/:id/publish", async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.$transaction([
+            prisma.magazineEdition.updateMany({
+                where: { id: { not: id } },
+                data: { status: 'draft', publishedAt: null }
+            }),
+            prisma.magazineEdition.update({
+                where: { id },
+                data: { status: 'published', publishedAt: new Date() }
+            })
+        ]);
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to publish edition" });
+    }
+});
+
+// DELETE EDITION
+app.delete("/api/editions/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.magazineEdition.delete({ where: { id } });
+        res.status(200).json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to delete edition" });
     }
 });
 

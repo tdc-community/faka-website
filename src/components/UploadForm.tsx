@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Upload, X, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { api, UserProfile } from "@/lib/api"
 
@@ -14,6 +14,16 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
     const [success, setSuccess] = useState(false)
+    const [entryFee, setEntryFee] = useState<number>(1000)
+
+    // Fetch settings on mount
+    useEffect(() => {
+        api.getSettings().then(data => {
+            if (!("error" in data) && data.entryFee) {
+                setEntryFee(data.entryFee)
+            }
+        }).catch(console.error)
+    }, [])
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -43,8 +53,8 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
             return
         }
 
-        if (user.balance < 1000) {
-            setError("Insufficient balance. The entry fee is $1,000.")
+        if (user.balance < entryFee) {
+            setError(`Insufficient balance. The entry fee is $${entryFee.toLocaleString()}.`)
             return
         }
 
@@ -77,7 +87,7 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
                 <h2 className="text-xl font-bold uppercase">Submit Your Build</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                     Enter the Faka Performance weekly contest.
-                    <span className="font-semibold text-primary ml-1">Entry Fee: $1,000</span>
+                    <span className="font-semibold text-primary ml-1">Entry Fee: ${entryFee.toLocaleString()}</span>
                 </p>
             </div>
 
@@ -147,14 +157,14 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
                     <div className="pt-2">
                         <button
                             type="submit"
-                            disabled={loading || !file || user.balance < 1000}
+                            disabled={loading || !file || user.balance < entryFee}
                             className="w-full flex items-center justify-center gap-2 rounded bg-primary px-4 py-4 font-bold uppercase tracking-wide text-black transition-colors hover:bg-primary/90 disabled:opacity-50"
                         >
-                            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Submit Entry (-$1,000)"}
+                            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `Submit Entry (-$${entryFee.toLocaleString()})`}
                         </button>
-                        {user.balance < 1000 && (
+                        {user.balance < entryFee && (
                             <p className="text-xs text-center text-destructive mt-2 font-medium">
-                                You need at least $1,000 in your balance to enter.
+                                You need at least ${entryFee.toLocaleString()} in your balance to enter.
                             </p>
                         )}
                     </div>

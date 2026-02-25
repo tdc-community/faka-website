@@ -53,3 +53,21 @@ model Transaction {
   externalId String?
   createdAt  DateTime @default(now())
 }
+
+model SiteSettings {
+  id          Int      @id @default(autoincrement())
+  entryFee    Float    @default(1000.0)
+  apiKey      String   @default("vashiat_super_taen_klyuch_tuka")
+  withdrawUrl String   @default("http://ip_na_survura/api/withdraw")
+  currentWeek Int      @default(1)
+  updatedAt   DateTime @updatedAt
+}
+
+model MagazineEdition {
+  id            String    @id
+  editionNumber Int
+  status        String    @default("draft") // "draft" or "published"
+  content       String    // Stringified JSON containing all the rich content
+  createdAt     DateTime  @default(now())
+  publishedAt   DateTime?
+}

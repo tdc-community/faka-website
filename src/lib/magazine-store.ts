@@ -178,9 +178,7 @@ const defaultArticles: ArticleData[] = [
 
 // ---- Helpers ----
 
-const STORAGE_KEY = "faka_magazine_editions"
-
-function generateId(): string {
+export function generateId(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }
 
@@ -197,49 +195,4 @@ export function getDefaultTemplate(editionNumber?: number): MagazineEdition {
     tracks: defaultTracks.map((t) => ({ ...t })),
     articles: defaultArticles.map((a) => ({ ...a })),
   }
-}
-
-export function getAllEditions(): MagazineEdition[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as MagazineEdition[]) : []
-  } catch {
-    return []
-  }
-}
-
-export function saveEdition(edition: MagazineEdition): void {
-  const all = getAllEditions()
-  const idx = all.findIndex((e) => e.id === edition.id)
-  if (idx >= 0) {
-    all[idx] = edition
-  } else {
-    all.push(edition)
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
-}
-
-export function publishEdition(id: string): void {
-  const all = getAllEditions()
-  for (const edition of all) {
-    if (edition.id === id) {
-      edition.status = "published"
-      edition.publishedAt = new Date().toISOString()
-    } else {
-      edition.status = "draft"
-      edition.publishedAt = undefined
-    }
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
-}
-
-export function deleteEdition(id: string): void {
-  const all = getAllEditions().filter((e) => e.id !== id)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
-}
-
-export function getPublishedEdition(): MagazineEdition | null {
-  const all = getAllEditions()
-  return all.find((e) => e.status === "published") ?? null
 }

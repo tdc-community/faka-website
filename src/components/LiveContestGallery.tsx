@@ -1,16 +1,21 @@
 import { useState, useEffect } from "react"
 import { api, UserProfile } from "@/lib/api"
 import { UploadForm } from "@/components/UploadForm"
-import { Loader2, Heart } from "lucide-react"
+import { Loader2, Heart, Trash2 } from "lucide-react"
 
 export function LiveContestGallery() {
     const [entries, setEntries] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState<UserProfile | null>(null)
     const [voteLoadingId, setVoteLoadingId] = useState<number | null>(null)
+    const [cancelLoadingId, setCancelLoadingId] = useState<number | null>(null)
+    const [entryFee, setEntryFee] = useState<number>(1000)
 
     useEffect(() => {
         fetchData()
+        api.getSettings().then(data => {
+            if (!("error" in data) && data.entryFee) setEntryFee(data.entryFee)
+        }).catch(console.error)
     }, [])
 
     async function fetchData() {
@@ -56,6 +61,26 @@ export function LiveContestGallery() {
             alert("Failed to cast vote.")
         } finally {
             setVoteLoadingId(null)
+        }
+    }
+
+    async function handleCancel(entryId: number) {
+        if (!user) return
+        if (!confirm(`Are you sure you want to cancel your entry? You will be refunded the $${entryFee.toLocaleString()} entry fee.`)) return
+
+        setCancelLoadingId(entryId)
+        try {
+            const res = await api.cancelEntry(user.id, entryId)
+            if (res.error) {
+                alert(res.error)
+            } else {
+                alert(`Entry successfully canceled. $${entryFee.toLocaleString()} refunded.`)
+                await fetchData()
+            }
+        } catch {
+            alert("Failed to cancel entry.")
+        } finally {
+            setCancelLoadingId(null)
         }
     }
 
@@ -117,13 +142,26 @@ export function LiveContestGallery() {
                                                     <span className="font-bold">{entry.votesCount} Votes</span>
                                                 </div>
 
-                                                <button
-                                                    onClick={() => handleVote(entry.id)}
-                                                    disabled={voteLoadingId === entry.id || !user}
-                                                    className="rounded bg-secondary hover:bg-secondary/80 px-4 py-2 text-xs font-bold uppercase transition-colors disabled:opacity-50 border border-border"
-                                                >
-                                                    {voteLoadingId === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Vote"}
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    {user && entry.ownerUsername === user.username && (
+                                                        <button
+                                                            onClick={() => handleCancel(entry.id)}
+                                                            disabled={cancelLoadingId === entry.id}
+                                                            className="rounded bg-destructive/10 hover:bg-destructive/20 text-destructive px-3 py-2 transition-colors disabled:opacity-50 border border-destructive/20"
+                                                            title="Cancel Entry"
+                                                        >
+                                                            {cancelLoadingId === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                        </button>
+                                                    )}
+
+                                                    <button
+                                                        onClick={() => handleVote(entry.id)}
+                                                        disabled={voteLoadingId === entry.id || !user}
+                                                        className="rounded bg-secondary hover:bg-secondary/80 px-4 py-2 text-xs font-bold uppercase transition-colors disabled:opacity-50 border border-border"
+                                                    >
+                                                        {voteLoadingId === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Vote"}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
