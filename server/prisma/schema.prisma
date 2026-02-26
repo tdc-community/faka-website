@@ -19,6 +19,17 @@ model User {
   entries      Entry[]
   transactions Transaction[]
   votes        Vote[]
+  roles        Role[]      @relation("UserRoles")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  color       String   @default("#CCCCCC")
+  permissions String   @default("[]") // JSON string array of permissions
+  createdAt   DateTime @default(now())
+
+  users       User[]   @relation("UserRoles")
 }
 
 model Entry {

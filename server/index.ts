@@ -5,6 +5,7 @@ import multer from "multer";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { PrismaClient } from "@prisma/client";
+import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -37,6 +38,20 @@ function generateFpCode(length: number = 6): string {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
+}
+
+// Security utils
+function hashPassword(password: string): string {
+    const salt = randomBytes(16).toString("hex");
+    const derivedKey = scryptSync(password, salt, 64).toString("hex");
+    return `${salt}:${derivedKey}`;
+}
+
+function verifyPassword(password: string, hash: string): boolean {
+    const [salt, key] = hash.split(":");
+    const keyBuffer = Buffer.from(key, "hex");
+    const derivedKey = scryptSync(password, salt, 64);
+    return timingSafeEqual(keyBuffer, derivedKey);
 }
 
 async function getSiteSettings() {
@@ -82,8 +97,11 @@ app.post("/api/admin/settings", async (req, res) => {
 
 // 0. GET USER INFO
 app.get("/api/user/:username", async (req, res) => {
-    const { username } = req.params;
-    const user = await prisma.user.findUnique({ where: { username } });
+    const username = req.params.username.toLowerCase();
+    const user = await prisma.user.findUnique({
+        where: { username },
+        include: { roles: true }
+    });
 
     if (!user) {
         return res.status(404).json({ error: "User not found" });
@@ -93,17 +111,59 @@ app.get("/api/user/:username", async (req, res) => {
         id: user.id,
         username: user.username,
         fp_code: user.fpCode,
-        balance: user.balance
+        balance: user.balance,
+        iban: user.iban,
+        roles: user.roles
     });
+});
+
+// 0.5 UPDATE IBAN
+app.post("/api/user/:username/iban", async (req, res) => {
+    const username = req.params.username.toLowerCase();
+    const { iban } = req.body;
+
+    if (!iban) {
+        return res.status(400).json({ error: "IBAN is required" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) {
+        return res.status(404).json({ error: "User not found" });
+    }
+
+    try {
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { iban }
+        });
+        res.status(200).json({ message: "IBAN updated successfully" });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update IBAN" });
+    }
+});
+
+// ADMIN LOGIN Endpoint
+app.post("/api/admin/login", async (req, res) => {
+    const { password } = req.body;
+    const adminPassword = process.env.ADMIN_PASSWORD || "faka2026";
+
+    if (password === adminPassword) {
+        // Simple token for demonstration. In production, use standard JWT.
+        return res.status(200).json({ message: "Authenticated", token: "super_admin_authenticated" });
+    } else {
+        return res.status(401).json({ error: "Invalid admin password" });
+    }
 });
 
 // 1. REGISTER
 app.post("/api/register", async (req, res) => {
-    const { username } = req.body;
+    let { username, password } = req.body;
 
-    if (!username) {
-        return res.status(400).json({ error: "Username is required" });
+    if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
     }
+
+    username = username.toLowerCase();
 
     // Check if taken
     const existing = await prisma.user.findUnique({ where: { username } });
@@ -120,9 +180,12 @@ app.post("/api/register", async (req, res) => {
         if (!existingCode) isUnique = true;
     }
 
+    const passwordHash = hashPassword(password);
+
     const newUser = await prisma.user.create({
         data: {
             username,
+            passwordHash,
             fpCode,
             balance: 0.0
         }
@@ -131,6 +194,47 @@ app.post("/api/register", async (req, res) => {
     return res.status(201).json({
         message: "User registered successfully",
         fp_code: newUser.fpCode
+    });
+});
+
+// 1.5 LOGIN
+app.post("/api/login", async (req, res) => {
+    let { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+    }
+
+    username = username.toLowerCase();
+
+    const user = await prisma.user.findUnique({
+        where: { username },
+        include: { roles: true }
+    });
+
+    if (!user) {
+        return res.status(401).json({ error: "Invalid username or password" });
+    }
+
+    // Handle legacy users who don't have a password yet
+    if (!user.passwordHash) {
+        const passwordHash = hashPassword(password);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash }
+        });
+    } else if (!verifyPassword(password, user.passwordHash)) {
+        return res.status(401).json({ error: "Invalid username or password" });
+    }
+
+    return res.status(200).json({
+        message: "Login successful",
+        id: user.id,
+        username: user.username,
+        fp_code: user.fpCode,
+        balance: user.balance,
+        iban: user.iban,
+        roles: user.roles
     });
 });
 
@@ -180,13 +284,17 @@ app.post("/api/deposit", async (req, res) => {
 
 // 3. WITHDRAW (From Frontend to Game Server)
 app.post("/api/frontend/withdraw", async (req, res) => {
-    const { user_id, amount, iban } = req.body;
+    const { user_id, amount } = req.body;
     const amountToWithdraw = parseFloat(amount || "0");
 
     const user = await prisma.user.findUnique({ where: { id: parseInt(user_id) } });
 
     if (!user || user.balance < amountToWithdraw || amountToWithdraw <= 0) {
         return res.status(400).json({ error: "Insufficient funds or invalid user" });
+    }
+
+    if (!user.iban) {
+        return res.status(400).json({ error: "No IBAN saved for user. Please save an IBAN first." });
     }
 
     const withdrawId = uuidv4();
@@ -207,7 +315,7 @@ app.post("/api/frontend/withdraw", async (req, res) => {
     const payload = {
         amount: amountToWithdraw,
         withdrawId,
-        iban: iban,
+        iban: user.iban,
         apiKey: settings.apiKey
     };
 
@@ -430,6 +538,125 @@ app.post("/api/vote", async (req, res) => {
     }
 });
 
+// --- ROLE MANAGEMENT ---
+
+// GET ALL ROLES
+app.get("/api/admin/roles", async (req, res) => {
+    try {
+        const roles = await prisma.role.findMany({
+            include: { _count: { select: { users: true } } }
+        });
+        res.status(200).json(roles);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch roles" });
+    }
+});
+
+// CREATE ROLE
+app.post("/api/admin/roles", async (req, res) => {
+    try {
+        const { name, color, permissions } = req.body;
+        const role = await prisma.role.create({
+            data: {
+                name,
+                color: color || "#CCCCCC",
+                permissions: JSON.stringify(permissions || [])
+            }
+        });
+        res.status(201).json(role);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to create role" });
+    }
+});
+
+// UPDATE ROLE
+app.put("/api/admin/roles/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, color, permissions } = req.body;
+
+        const role = await prisma.role.update({
+            where: { id: parseInt(id) },
+            data: {
+                name,
+                color,
+                permissions: typeof permissions === 'string' ? permissions : JSON.stringify(permissions)
+            }
+        });
+        res.status(200).json(role);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update role" });
+    }
+});
+
+// DELETE ROLE
+app.delete("/api/admin/roles/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.role.delete({ where: { id: parseInt(id) } });
+        res.status(200).json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to delete role" });
+    }
+});
+
+// --- USER MANAGEMENT ---
+
+// GET ALL USERS (Admin Directory)
+app.get("/api/admin/users", async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                username: true,
+                fpCode: true,
+                balance: true,
+                iban: true,
+                createdAt: true,
+                roles: true,
+                _count: {
+                    select: {
+                        entries: true,
+                        votes: true,
+                        transactions: true
+                    }
+                }
+            }
+        });
+        res.status(200).json(users);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch users" });
+    }
+});
+
+// ASSIGN/REMOVE ROLES TO USER
+app.post("/api/admin/users/:id/roles", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { roleIds } = req.body; // Array of role IDs
+
+        // Because Prisma connect/disconnect requires exactly matching the current state
+        // The easiest way is to set the roles array completely
+
+        const updatedUser = await prisma.user.update({
+            where: { id: parseInt(id) },
+            data: {
+                roles: {
+                    set: roleIds.map((roleId: number) => ({ id: roleId }))
+                }
+            },
+            include: { roles: true }
+        });
+
+        res.status(200).json(updatedUser);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update user roles" });
+    }
+});
+
+
 // --- MAGAZINE EDITIONS ---
 
 // GET ALL EDITIONS
@@ -438,16 +665,25 @@ app.get("/api/editions", async (req, res) => {
         const editions = await prisma.magazineEdition.findMany({
             orderBy: { editionNumber: 'desc' }
         });
-        const formatted = editions.map(e => ({
-            id: e.id,
-            editionNumber: e.editionNumber,
-            status: e.status,
-            createdAt: e.createdAt,
-            publishedAt: e.publishedAt,
-            ...JSON.parse(e.content)
-        }));
+        const formatted = editions.map(e => {
+            let parsedContent = {};
+            try {
+                parsedContent = JSON.parse(e.content);
+            } catch (parseErr) {
+                console.error(`Failed to parse content for edition ${e.id}`);
+            }
+            return {
+                id: e.id,
+                editionNumber: e.editionNumber,
+                status: e.status,
+                createdAt: e.createdAt,
+                publishedAt: e.publishedAt,
+                ...parsedContent
+            };
+        });
         res.status(200).json(formatted);
     } catch (err) {
+        console.error("Failed to fetch editions:", err);
         res.status(500).json({ error: "Failed to fetch editions" });
     }
 });
@@ -460,16 +696,58 @@ app.get("/api/editions/published", async (req, res) => {
         });
         if (!edition) return res.status(404).json({ error: "No published edition found" });
 
+        let parsedContent: any = {};
+        try {
+            parsedContent = JSON.parse(edition.content);
+        } catch (e) {
+            console.error("Failed to parse published edition content");
+        }
+        const settings = await getSiteSettings();
+
+        // Find winner from previous week (or week 1 if we're still on week 1)
+        const targetWeek = settings.currentWeek > 1 ? settings.currentWeek - 1 : 1;
+        const entries = await prisma.entry.findMany({
+            where: { weekNumber: targetWeek },
+            include: { user: true, votes: true }
+        });
+
+        const totalEntries = entries.length;
+        let winner = null;
+        if (totalEntries > 0) {
+            // Sort descending by votes
+            entries.sort((a, b) => b.votes.length - a.votes.length);
+            winner = entries[0];
+        }
+
+        // Inject dynamic values
+        if (winner) {
+            parsedContent.carOfTheWeek = {
+                ...parsedContent.carOfTheWeek,
+                carName: winner.description || "Unknown Build",
+                builderName: winner.user.username,
+                imageUrl: winner.imageUrl,
+                entries: totalEntries,
+                votes: winner.votes.length
+            };
+        } else {
+            parsedContent.carOfTheWeek = {
+                ...parsedContent.carOfTheWeek,
+                entries: 0,
+                votes: 0
+            };
+        }
+
         const formatted = {
             id: edition.id,
             editionNumber: edition.editionNumber,
             status: edition.status,
             createdAt: edition.createdAt,
             publishedAt: edition.publishedAt,
-            ...JSON.parse(edition.content)
+            ...parsedContent
         };
         res.status(200).json(formatted);
     } catch (err) {
+        console.error("Failed to fetch published edition:", err);
         res.status(500).json({ error: "Failed to fetch published edition" });
     }
 });

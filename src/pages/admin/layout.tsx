@@ -28,11 +28,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         sessionStorage.setItem("faka_admin_auth", "authenticated")
         setAuthenticated(true)
       } else {
-        setError("Invalid password. Access denied.")
+        setError("Невалидна парола. Достъпът е отказан.")
         setPassword("")
       }
     } catch {
-      setError("Connection error. Please try again.")
+      setError("Грешка при свързване. Моля, опитайте отново.")
     } finally {
       setLoading(false)
     }
@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Faka<span className="text-primary">Performance</span>
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">Staff Dashboard</p>
+            <p className="text-sm text-muted-foreground">Табло на Екипа</p>
           </div>
 
           {/* Card */}
@@ -72,10 +72,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
               <div>
                 <h1 className="font-serif text-lg font-bold uppercase text-foreground">
-                  Admin Access
+                  Админски Достъп
                 </h1>
                 <p className="text-xs text-muted-foreground">
-                  Enter password to continue
+                  Въведете парола за да продължите
                 </p>
               </div>
             </div>
@@ -86,14 +86,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   htmlFor="password"
                   className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                 >
-                  Password
+                  Парола
                 </label>
                 <input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter admin password"
+                  placeholder="Въведете админска парола"
                   required
                   className="w-full rounded-sm border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
@@ -114,14 +114,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  "Authenticate"
+                  "Вход"
                 )}
               </button>
             </form>
           </div>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            Contact a server admin if you need access.
+            Свържете се със сървърен админ, ако се нуждаете от достъп.
           </p>
         </div>
       </div>

@@ -31,7 +31,7 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
         const selected = e.target.files?.[0]
         if (selected) {
             if (!selected.type.startsWith('image/')) {
-                setError("Please select an image file.")
+                setError("Моля, изберете файл с изображение.")
                 return
             }
             setFile(selected)
@@ -49,12 +49,12 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!file) {
-            setError("Please select an image to upload.")
+            setError("Моля, изберете изображение за качване.")
             return
         }
 
         if (user.balance < entryFee) {
-            setError(`Insufficient balance. The entry fee is $${entryFee.toLocaleString()}.`)
+            setError(`Недостатъчен баланс. Таксата за участие е $${entryFee.toLocaleString()}.`)
             return
         }
 
@@ -75,7 +75,7 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
                 }, 3000)
             }
         } catch {
-            setError("Network error. Could not upload entry.")
+            setError("Мрежова грешка. Неуспешно качване на участието.")
         } finally {
             setLoading(false)
         }
@@ -84,24 +84,24 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
     return (
         <div className="rounded border border-border bg-card p-6 shadow-sm">
             <div className="mb-6">
-                <h2 className="text-xl font-bold uppercase">Submit Your Build</h2>
+                <h2 className="text-xl font-bold uppercase">Качете Своя Проект</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Enter the Faka Performance weekly contest.
-                    <span className="font-semibold text-primary ml-1">Entry Fee: ${entryFee.toLocaleString()}</span>
+                    Участвайте в седмичния конкурс на Faka Performance.
+                    <span className="font-semibold text-primary ml-1">Такса за Участие: ${entryFee.toLocaleString()}</span>
                 </p>
             </div>
 
             {success ? (
                 <div className="flex flex-col items-center justify-center p-8 text-center space-y-3 bg-green-500/10 border border-green-500/20 rounded">
                     <CheckCircle2 className="h-12 w-12 text-green-500" />
-                    <p className="font-bold text-lg text-green-500">Entry Submitted Successfully!</p>
-                    <p className="text-sm text-muted-foreground">Good luck in this week's contest.</p>
+                    <p className="font-bold text-lg text-green-500">Участието е Успешно Качено!</p>
+                    <p className="text-sm text-muted-foreground">Късмет в конкурса тази седмица.</p>
                 </div>
             ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
                         <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground block">
-                            Car Photo
+                            Снимка на Колата
                         </label>
 
                         {!preview ? (
@@ -110,8 +110,8 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
                                 className="border-2 border-dashed border-border rounded-lg p-12 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors bg-secondary/50"
                             >
                                 <Upload className="h-8 w-8 text-muted-foreground mb-3" />
-                                <p className="text-sm font-medium">Click to upload your best shot</p>
-                                <p className="text-xs text-muted-foreground mt-1">JPG, PNG up to 10MB</p>
+                                <p className="text-sm font-medium">Кликнете, за да качите най-добрата си снимка</p>
+                                <p className="text-xs text-muted-foreground mt-1">JPG, PNG до 10MB</p>
                             </div>
                         ) : (
                             <div className="relative rounded-lg overflow-hidden border border-border bg-secondary aspect-video">
@@ -137,10 +137,10 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
 
                     <div className="space-y-2">
                         <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground block">
-                            Build Description (Optional)
+                            Описание на Проекта (По Избор)
                         </label>
                         <textarea
-                            placeholder="Tell us about the mods..."
+                            placeholder="Разкажете ни за модификациите..."
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             className="w-full min-h-[100px] rounded border border-border bg-secondary px-4 py-3 text-sm focus:border-primary focus:outline-none resize-none"
@@ -160,11 +160,11 @@ export function UploadForm({ user, onSuccess }: UploadFormProps) {
                             disabled={loading || !file || user.balance < entryFee}
                             className="w-full flex items-center justify-center gap-2 rounded bg-primary px-4 py-4 font-bold uppercase tracking-wide text-black transition-colors hover:bg-primary/90 disabled:opacity-50"
                         >
-                            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `Submit Entry (-$${entryFee.toLocaleString()})`}
+                            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `Качи Участие (-$${entryFee.toLocaleString()})`}
                         </button>
                         {user.balance < entryFee && (
                             <p className="text-xs text-center text-destructive mt-2 font-medium">
-                                You need at least ${entryFee.toLocaleString()} in your balance to enter.
+                                Нуждаете се от поне ${entryFee.toLocaleString()} в баланса си, за да участвате.
                             </p>
                         )}
                     </div>

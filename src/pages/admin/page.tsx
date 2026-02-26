@@ -1,29 +1,14 @@
-
 import React, { useState, useEffect, useCallback } from "react"
 import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Save,
-  Send,
   Trash2,
-  ArrowLeft,
-  FileText,
   Eye,
-  Clock,
   X,
   Loader2,
 } from "lucide-react"
-import type {
-  MagazineEdition,
-  FeaturedBuild,
-  TrackData,
-  ArticleData,
-} from "@/lib/magazine-store"
-import {
-  getDefaultTemplate,
-} from "@/lib/magazine-store"
-import { api, SiteSettings } from "@/lib/api"
+import { api } from "@/lib/api"
 
 // ---- Collapsible Section ----
 
@@ -188,7 +173,7 @@ function ConfirmDialog({
             onClick={onCancel}
             className="rounded-sm border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
           >
-            Cancel
+            Отказ
           </button>
           <button
             onClick={onConfirm}
@@ -204,231 +189,35 @@ function ConfirmDialog({
 
 // ---- Main Admin Page ----
 
-export default function AdminPage() {
-  const [editions, setEditions] = useState<MagazineEdition[]>([])
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [edition, setEdition] = useState<MagazineEdition | null>(null)
-  const [saved, setSaved] = useState(false)
-  const [confirmPublish, setConfirmPublish] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+const AVAILABLE_PERMISSIONS = [
+  { id: "manage_magazine", label: "Управление на Списание (Табло)" },
+  { id: "manage_users", label: "Управление на Потребители" },
+  { id: "manage_roles", label: "Управление на Роли" },
+  { id: "manage_settings", label: "Глобални Конфигурации" },
+]
 
-  // Global Settings state
-  const [settings, setSettings] = useState<SiteSettings | null>(null)
+export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState<"users" | "roles" | "settings">("users")
+
+  // Roles State
+  const [roles, setRoles] = useState<any[]>([])
+  const [loadingRoles, setLoadingRoles] = useState(true)
+  const [newRoleName, setNewRoleName] = useState("")
+  const [newRoleColor, setNewRoleColor] = useState("#ff0000")
+  const [newRolePerms, setNewRolePerms] = useState<string[]>([])
+
+  // Users State
+  const [users, setUsers] = useState<any[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(true)
+  const [managingUser, setManagingUser] = useState<any | null>(null)
+
+  // Settings State
+  const [settings, setSettings] = useState<any | null>(null)
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
 
-  const refreshEditions = useCallback(async () => {
-    const data = await api.getEditions()
-    if (!("error" in data)) {
-      setEditions(data)
-      return data
-    }
-    return []
-  }, [])
-
-  useEffect(() => {
-    refreshEditions()
-
-    // Fetch global settings
-    api.getSettings().then((data) => {
-      if (!("error" in data)) setSettings(data)
-    }).catch(console.error)
-  }, [refreshEditions])
-
-  async function selectEdition(id: string) {
-    const all = await refreshEditions()
-    const found = all.find((e) => e.id === id)
-    if (found) {
-      setEdition(structuredClone(found))
-      setActiveId(id)
-      setSaved(false)
-    }
-  }
-
-  async function createNewEdition() {
-    const maxNum = editions.reduce((m, e) => Math.max(m, e.editionNumber), 0)
-    const template = getDefaultTemplate(maxNum + 1)
-    await api.saveEdition(template)
-    const all = await refreshEditions()
-    const found = all.find((e) => e.id === template.id)
-    if (found) {
-      setEdition(structuredClone(found))
-      setActiveId(found.id)
-      setSaved(false)
-    }
-  }
-
-  async function handleSave() {
-    if (!edition) return
-    await api.saveEdition(edition)
-    await refreshEditions()
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  async function handlePublish() {
-    if (!edition) return
-    await api.saveEdition(edition)
-    await api.publishEdition(edition.id)
-    const all = await refreshEditions()
-    const found = all.find((e) => e.id === edition.id)
-    if (found) {
-      setEdition(structuredClone(found))
-    }
-    setConfirmPublish(false)
-  }
-
-  async function handleDelete() {
-    if (!edition) return
-    await api.deleteEdition(edition.id)
-    await refreshEditions()
-    setEdition(null)
-    setActiveId(null)
-    setConfirmDelete(false)
-  }
-
-  // Update helpers for nested state
-  function updateEdition(partial: Partial<MagazineEdition>) {
-    if (!edition) return
-    setEdition({ ...edition, ...partial })
-    setSaved(false)
-  }
-
-  function updateHero(key: string, value: string) {
-    if (!edition) return
-    setEdition({
-      ...edition,
-      hero: { ...edition.hero, [key]: value },
-    })
-    setSaved(false)
-  }
-
-  function updateHeroStat(idx: number, key: "value" | "label", val: string) {
-    if (!edition) return
-    const stats = [...edition.hero.stats]
-    stats[idx] = { ...stats[idx], [key]: val }
-    setEdition({
-      ...edition,
-      hero: { ...edition.hero, stats },
-    })
-    setSaved(false)
-  }
-
-  function updateTicker(idx: number, val: string) {
-    if (!edition) return
-    const ticker = [...edition.ticker]
-    ticker[idx] = val
-    setEdition({ ...edition, ticker })
-    setSaved(false)
-  }
-
-  function addTicker() {
-    if (!edition) return
-    setEdition({ ...edition, ticker: [...edition.ticker, ""] })
-    setSaved(false)
-  }
-
-  function removeTicker(idx: number) {
-    if (!edition) return
-    setEdition({ ...edition, ticker: edition.ticker.filter((_, i) => i !== idx) })
-    setSaved(false)
-  }
-
-  function updateCOTW(key: string, value: string | number) {
-    if (!edition) return
-    setEdition({
-      ...edition,
-      carOfTheWeek: { ...edition.carOfTheWeek, [key]: value },
-    })
-    setSaved(false)
-  }
-
-  function updateBuild(idx: number, key: keyof FeaturedBuild, value: string | number) {
-    if (!edition) return
-    const builds = [...edition.featuredBuilds]
-    builds[idx] = { ...builds[idx], [key]: value }
-    setEdition({ ...edition, featuredBuilds: builds })
-    setSaved(false)
-  }
-
-  function addBuild() {
-    if (!edition) return
-    setEdition({
-      ...edition,
-      featuredBuilds: [
-        ...edition.featuredBuilds,
-        { title: "", owner: "", category: "", imageUrl: "", votes: 0, edition: "" },
-      ],
-    })
-    setSaved(false)
-  }
-
-  function removeBuild(idx: number) {
-    if (!edition) return
-    setEdition({
-      ...edition,
-      featuredBuilds: edition.featuredBuilds.filter((_, i) => i !== idx),
-    })
-    setSaved(false)
-  }
-
-  function updateTrack(idx: number, key: keyof TrackData, value: string | number) {
-    if (!edition) return
-    const tracks = [...edition.tracks]
-    tracks[idx] = { ...tracks[idx], [key]: value }
-    setEdition({ ...edition, tracks })
-    setSaved(false)
-  }
-
-  function addTrack() {
-    if (!edition) return
-    setEdition({
-      ...edition,
-      tracks: [
-        ...edition.tracks,
-        { name: "", location: "", rating: 0, difficulty: "", laps: 0 },
-      ],
-    })
-    setSaved(false)
-  }
-
-  function removeTrack(idx: number) {
-    if (!edition) return
-    setEdition({ ...edition, tracks: edition.tracks.filter((_, i) => i !== idx) })
-    setSaved(false)
-  }
-
-  function updateArticle(idx: number, key: keyof ArticleData, value: string) {
-    if (!edition) return
-    const articles = [...edition.articles]
-    articles[idx] = { ...articles[idx], [key]: value }
-    setEdition({ ...edition, articles })
-    setSaved(false)
-  }
-
-  function addArticle() {
-    if (!edition) return
-    setEdition({
-      ...edition,
-      articles: [
-        ...edition.articles,
-        { category: "", title: "", excerpt: "", date: "", readTime: "" },
-      ],
-    })
-    setSaved(false)
-  }
-
-  function removeArticle(idx: number) {
-    if (!edition) return
-    setEdition({
-      ...edition,
-      articles: edition.articles.filter((_, i) => i !== idx),
-    })
-    setSaved(false)
-  }
-
-  // ---- Settings Handlers ----
-  function updateSetting(key: keyof SiteSettings, value: any) {
+  // Settings Handlers
+  function updateSetting(key: string, value: any) {
     if (!settings) return
     setSettings({ ...settings, [key]: value })
     setSettingsSaved(false)
@@ -448,166 +237,431 @@ export default function AdminPage() {
     }
   }
 
-  // ---- No edition selected: show edition list ----
-  if (!edition) {
-    const publishedEdition = editions.find((e) => e.status === "published")
+  const refreshRoles = useCallback(async () => {
+    setLoadingRoles(true)
+    const data = await api.getRoles()
+    if (!("error" in data)) setRoles(data)
+    setLoadingRoles(false)
+  }, [])
 
-    return (
-      <div className="min-h-screen bg-background">
-        {/* Top bar */}
-        <div className="border-b border-border bg-card">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 lg:px-8">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <div className="h-7 w-1.5 rounded-sm bg-primary" />
-                <div className="h-5 w-1.5 rounded-sm bg-primary/60" />
-              </div>
-              <span className="font-serif text-lg font-bold uppercase tracking-wider text-foreground">
-                Faka<span className="text-primary">Performance</span>
-                <span className="ml-2 text-xs font-normal normal-case tracking-normal text-muted-foreground">
-                  Admin
-                </span>
-              </span>
+  const refreshUsers = useCallback(async () => {
+    setLoadingUsers(true)
+    const data = await api.getUsers()
+    if (!("error" in data)) setUsers(data)
+    setLoadingUsers(false)
+  }, [])
+
+  useEffect(() => {
+    refreshRoles()
+    refreshUsers()
+
+    // Fetch global settings
+    api.getSettings().then((data) => {
+      if (!("error" in data)) setSettings(data)
+    }).catch(console.error)
+  }, [refreshRoles, refreshUsers])
+
+  // Handlers
+  async function handleCreateRole(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newRoleName) return
+
+    const permissionsJson = JSON.stringify(newRolePerms)
+
+    await api.createRole({ name: newRoleName, color: newRoleColor, permissions: permissionsJson })
+    setNewRoleName("")
+    setNewRolePerms([])
+    refreshRoles()
+  }
+
+  async function handleDeleteRole(id: number) {
+    if (confirm("Сигурни ли сте, че искате да изтриете тази роля?")) {
+      await api.deleteRole(id)
+      refreshRoles()
+      refreshUsers()
+    }
+  }
+
+  async function toggleUserRole(userId: number, roleId: number, currentRoleIds: number[]) {
+    const newRoleIds = currentRoleIds.includes(roleId)
+      ? currentRoleIds.filter(id => id !== roleId)
+      : [...currentRoleIds, roleId]
+
+    await api.updateUserRoles(userId, newRoleIds)
+    refreshUsers()
+    // Update local managing user state if open
+    if (managingUser && managingUser.id === userId) {
+      setManagingUser({
+        ...managingUser,
+        roles: newRoleIds.map(id => roles.find(r => r.id === id)).filter(Boolean)
+      })
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Top bar */}
+      <div className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <div className="h-7 w-1.5 rounded-sm bg-primary" />
+              <div className="h-5 w-1.5 rounded-sm bg-primary/60" />
             </div>
+            <span className="font-serif text-lg font-bold uppercase tracking-wider text-foreground">
+              Faka<span className="text-primary">Performance</span>
+              <span className="ml-2 text-xs font-normal normal-case tracking-normal text-muted-foreground">
+                Супер Админ
+              </span>
+            </span>
+          </div>
+          <div className="flex items-center gap-6">
+            <a
+              href="/staff"
+              className="text-sm font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-primary"
+            >
+              Табло на Екипа
+            </a>
             <a
               href="/"
               className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
             >
               <Eye className="h-4 w-4" />
-              View Site
+              Виж Сайта
             </a>
           </div>
         </div>
+      </div>
 
-        <div className="mx-auto max-w-5xl px-4 py-8 lg:px-8">
-          {/* Stats */}
-          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
-            <div className="rounded-sm border border-border bg-card p-5">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Total Editions
-              </div>
-              <div className="mt-1 font-serif text-3xl font-bold text-foreground">
-                {editions.length}
-              </div>
-            </div>
-            <div className="rounded-sm border border-border bg-card p-5">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Currently Live
-              </div>
-              <div className="mt-1 font-serif text-3xl font-bold text-primary">
-                {publishedEdition ? `#${publishedEdition.editionNumber}` : "None"}
-              </div>
-            </div>
-            <div className="col-span-2 rounded-sm border border-border bg-card p-5 lg:col-span-1">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Draft Editions
-              </div>
-              <div className="mt-1 font-serif text-3xl font-bold text-foreground">
-                {editions.filter((e) => e.status === "draft").length}
-              </div>
-            </div>
-          </div>
+      <div className="mx-auto max-w-6xl px-4 py-8 lg:px-8">
 
-          {/* New Edition */}
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mt-12">
-            <h2 className="font-serif text-2xl font-bold uppercase tracking-tight text-foreground">
-              All Editions
-            </h2>
-            <button
-              onClick={createNewEdition}
-              className="flex items-center justify-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 min-w-[140px]"
-            >
-              <Plus className="h-4 w-4" />
-              New Edition
-            </button>
-          </div>
+        {/* Tabs */}
+        <div className="mb-8 flex gap-4 border-b border-border pb-px text-sm font-bold uppercase tracking-wide">
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`border-b-2 py-2 px-1 transition-colors ${activeTab === "users"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+          >
+            Потребители
+          </button>
+          <button
+            onClick={() => setActiveTab("roles")}
+            className={`border-b-2 py-2 px-1 transition-colors ${activeTab === "roles"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+          >
+            Управление на Роли
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`border-b-2 py-2 px-1 transition-colors ${activeTab === "settings"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+          >
+            Настройки
+          </button>
+        </div>
 
-          {/* Edition List */}
-          {editions.length === 0 ? (
-            <div className="rounded-sm border border-dashed border-border bg-card p-12 text-center">
-              <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-              <p className="font-serif text-lg font-bold uppercase text-foreground">
-                No editions yet
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Create your first weekly magazine edition.
-              </p>
+        {/* --- USERS TAB --- */}
+        {activeTab === "users" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="font-serif text-2xl font-bold uppercase text-foreground">
+                Директория на Потребителите
+              </h2>
             </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {[...editions]
-                .sort((a, b) => b.editionNumber - a.editionNumber)
-                .map((ed) => (
-                  <button
-                    key={ed.id}
-                    onClick={() => selectEdition(ed.id)}
-                    className="flex items-center gap-4 rounded-sm border border-border bg-card p-4 text-left transition-all hover:border-primary/50 hover:bg-secondary/50"
-                  >
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-sm bg-primary/10 font-serif text-lg font-bold text-primary">
-                      #{ed.editionNumber}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-serif font-bold uppercase text-foreground">
-                          Edition #{ed.editionNumber}
-                        </span>
-                        {ed.status === "published" ? (
-                          <span className="rounded-sm bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
-                            Live
-                          </span>
-                        ) : (
-                          <span className="rounded-sm bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Draft
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Created{" "}
-                          {new Date(ed.createdAt).toLocaleDateString()}
-                        </span>
-                        {ed.publishedAt && (
-                          <span>
-                            Published{" "}
-                            {new Date(ed.publishedAt).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+
+            <div className="overflow-hidden rounded-sm border border-border bg-card shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-border bg-secondary/30 text-xs font-bold uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-6 py-4">ID</th>
+                      <th className="px-6 py-4">Потребител</th>
+                      <th className="px-6 py-4">Баланс</th>
+                      <th className="px-6 py-4">Активност</th>
+                      <th className="px-6 py-4">Роли</th>
+                      <th className="px-6 py-4 text-right">Управление</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {loadingUsers ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                          <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                        </td>
+                      </tr>
+                    ) : users.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground font-serif uppercase items-center">
+                          Няма намерени потребители
+                        </td>
+                      </tr>
+                    ) : (
+                      users.map((user) => (
+                        <tr key={user.id} className="transition-colors hover:bg-secondary/20">
+                          <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
+                            #{user.id}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="font-bold">{user.username}</span>
+                          </td>
+                          <td className="px-6 py-4 text-primary font-bold">
+                            ${user.balance}
+                          </td>
+                          <td className="px-6 py-4 text-xs text-muted-foreground">
+                            {user._count?.entries || 0} Коли | {user._count?.votes || 0} Гласа
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1.5">
+                              {user.roles && user.roles.length > 0 ? (
+                                user.roles.map((r: any) => (
+                                  <span
+                                    key={r.id}
+                                    style={{ backgroundColor: `${r.color}20`, color: r.color, borderColor: `${r.color}40` }}
+                                    className="rounded-sm border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                                  >
+                                    {r.name}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground uppercase">Няма</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => setManagingUser(managingUser?.id === user.id ? null : user)}
+                              className="text-xs font-bold uppercase text-primary hover:underline"
+                            >
+                              Роли
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Quick Role Assignment Panel */}
+            {managingUser && (
+              <div className="rounded-sm border border-border bg-card p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
+                  <div>
+                    <h3 className="font-serif text-lg font-bold uppercase text-foreground">
+                      Управление на Роли: {managingUser.username}
+                    </h3>
+                    <p className="text-xs text-muted-foreground uppercase mt-1">
+                      Изберете ролите, които искате да присвоите на този потребител.
+                    </p>
+                  </div>
+                  <button onClick={() => setManagingUser(null)} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-5 w-5" />
                   </button>
-                ))}
-            </div>
-          )}
+                </div>
 
-          {/* Global App Settings Section outside of editions */}
-          <div className="mt-16 mb-6">
-            <h2 className="font-serif text-2xl font-bold uppercase tracking-tight text-foreground mb-4">
-              Global Configuration
+                <div className="flex flex-wrap gap-3">
+                  {roles.map(role => {
+                    const hasRole = managingUser.roles?.some((r: any) => r.id === role.id)
+                    return (
+                      <button
+                        key={role.id}
+                        onClick={() => toggleUserRole(managingUser.id, role.id, managingUser.roles?.map((r: any) => r.id) || [])}
+                        style={{
+                          backgroundColor: hasRole ? `${role.color}20` : 'transparent',
+                          borderColor: hasRole ? role.color : 'var(--border)',
+                          color: hasRole ? role.color : 'inherit'
+                        }}
+                        className={`flex items-center gap-2 border rounded-sm px-3 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-secondary`}
+                      >
+                        <div
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: role.color }}
+                        />
+                        {role.name}
+                      </button>
+                    )
+                  })}
+                  {roles.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Първо създайте роли в раздела "Управление на Роли".</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* --- ROLES TAB --- */}
+        {activeTab === "roles" && (
+          <div className="grid gap-8 lg:grid-cols-3">
+
+            {/* Create Role Form */}
+            <div className="rounded-sm border border-border bg-card p-6 shadow-sm">
+              <h2 className="mb-6 font-serif text-xl font-bold uppercase text-foreground">
+                Нова Роля
+              </h2>
+              <form onSubmit={handleCreateRole} className="flex flex-col gap-4">
+                <TextInput
+                  label="Име на Ролята (напр. Staff)"
+                  value={newRoleName}
+                  onChange={setNewRoleName}
+                  placeholder="Въведете име"
+                />
+                <div>
+                  <FieldLabel>Цвят (HEX)</FieldLabel>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={newRoleColor}
+                      onChange={(e) => setNewRoleColor(e.target.value)}
+                      className="h-10 w-14 cursor-pointer rounded-sm bg-secondary border border-border p-1"
+                    />
+                    <input
+                      type="text"
+                      value={newRoleColor}
+                      onChange={(e) => setNewRoleColor(e.target.value)}
+                      className="flex-1 rounded-sm border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary uppercase font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel>Разрешения</FieldLabel>
+                  <div className="mt-2 space-y-2">
+                    {AVAILABLE_PERMISSIONS.map((perm) => (
+                      <label key={perm.id} className="flex items-center gap-3 cursor-pointer">
+                        <div
+                          className={`flex h-5 w-5 items-center justify-center rounded-sm border ${newRolePerms.includes(perm.id)
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-border bg-secondary"
+                            }`}
+                        >
+                          {newRolePerms.includes(perm.id) && (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={newRolePerms.includes(perm.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewRolePerms([...newRolePerms, perm.id])
+                            } else {
+                              setNewRolePerms(newRolePerms.filter((p) => p !== perm.id))
+                            }
+                          }}
+                        />
+                        <span className="text-sm text-foreground">{perm.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!newRoleName}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-primary-foreground disabled:opacity-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  Създай Роля
+                </button>
+              </form>
+            </div>
+
+            {/* Roles List */}
+            <div className="lg:col-span-2 space-y-4">
+              <h2 className="font-serif text-xl font-bold uppercase text-foreground">
+                Активни Роли
+              </h2>
+
+              {loadingRoles ? (
+                <div className="flex items-center justify-center p-8 text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : roles.length === 0 ? (
+                <div className="rounded-sm border border-dashed border-border p-10 text-center">
+                  <p className="text-sm uppercase text-muted-foreground">Няма създадени роли.</p>
+                </div>
+              ) : (
+                roles.map(role => (
+                  <div key={role.id} className="flex items-center justify-between rounded-sm border border-border bg-card p-4 shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-sm font-bold text-lg"
+                        style={{ backgroundColor: `${role.color}20`, color: role.color }}
+                      >
+                        {role.name.substring(0, 1).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-bold uppercase tracking-wider" style={{ color: role.color }}>
+                          {role.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground uppercase">
+                          {role._count?.users || 0} Потребители с тази роля
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground truncate max-w-xs">
+                          {(() => {
+                            try {
+                              const perms = JSON.parse(role.permissions)
+                              return Array.isArray(perms) && perms.length > 0
+                                ? `Разрешения: ${perms.join(', ')}`
+                                : 'Няма Разрешения'
+                            } catch (e) {
+                              return role.permissions ? `Разрешения: ${role.permissions}` : 'Няма Разрешения'
+                            }
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteRole(role.id)}
+                      className="rounded-sm p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Изтрий роля"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+        {/* --- SETTINGS TAB --- */}
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            <h2 className="font-serif text-2xl font-bold uppercase text-foreground">
+              Глобална Конфигурация
             </h2>
             {settings ? (
               <div className="rounded-sm border border-border bg-card p-6 shadow-sm">
                 <div className="grid gap-6 md:grid-cols-2">
                   <NumberInput
-                    label="Contest Entry Fee ($)"
+                    label="Такса за Участие в Конкурса ($)"
                     value={settings.entryFee || 1000}
                     onChange={(v) => updateSetting("entryFee", v)}
                     min={0}
                   />
                   <NumberInput
-                    label="Current Active Week"
+                    label="Текуща Активна Седмица"
                     value={settings.currentWeek || 1}
                     onChange={(v) => updateSetting("currentWeek", v)}
                     min={1}
                   />
                   <TextInput
-                    label="API Key (For Webhooks)"
+                    label="API Ключ (За Уебхукове)"
                     value={settings.apiKey || ""}
                     onChange={(v) => updateSetting("apiKey", v)}
                   />
                   <TextInput
-                    label="Withdraw Webhook URL"
+                    label="Уебхук URL за Теглене"
                     value={settings.withdrawUrl || ""}
                     onChange={(v) => updateSetting("withdrawUrl", v)}
                   />
@@ -618,7 +672,7 @@ export default function AdminPage() {
                     disabled={settingsLoading}
                     className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                   >
-                    {settingsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (settingsSaved ? <span className="flex items-center gap-1 text-green-700">Saved!</span> : "Save Settings")}
+                    {settingsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (settingsSaved ? <span className="flex items-center gap-1 text-green-700">Запазено!</span> : "Запази Настройки")}
                   </button>
                 </div>
               </div>
@@ -628,427 +682,8 @@ export default function AdminPage() {
               </div>
             )}
           </div>
-
-        </div>
+        )}
       </div>
-    )
-  }
-
-  // ---- Edition editor ----
-  return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Top bar */}
-      <div className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 lg:px-8">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => {
-                setEdition(null)
-                setActiveId(null)
-                refreshEditions()
-              }}
-              className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </button>
-            <div className="h-5 w-px bg-border" />
-            <div className="flex items-center gap-2">
-              <span className="font-serif font-bold uppercase text-foreground">
-                Edition #{edition.editionNumber}
-              </span>
-              {edition.status === "published" ? (
-                <span className="rounded-sm bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
-                  Live
-                </span>
-              ) : (
-                <span className="rounded-sm bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Draft
-                </span>
-              )}
-            </div>
-          </div>
-          <a
-            href="/"
-            target="_blank"
-            className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
-          >
-            <Eye className="h-4 w-4" />
-            Preview
-          </a>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8">
-        {/* Edition Number */}
-        <div className="mb-6">
-          <TextInput
-            label="Edition Number"
-            value={String(edition.editionNumber)}
-            onChange={(v) => updateEdition({ editionNumber: Number(v) || 0 })}
-            type="number"
-          />
-        </div>
-
-        <div className="flex flex-col gap-4">
-          {/* === HERO === */}
-          <Section title="Hero Section" icon={<FileText className="h-4 w-4" />} defaultOpen>
-            <div className="flex flex-col gap-4">
-              <TextInput
-                label="Headline"
-                value={edition.hero.headline}
-                onChange={(v) => updateHero("headline", v)}
-                placeholder="Where Performance Meets Community"
-              />
-              <TextArea
-                label="Subheadline"
-                value={edition.hero.subheadline}
-                onChange={(v) => updateHero("subheadline", v)}
-                rows={2}
-              />
-              <TextInput
-                label="Hero Image URL"
-                value={edition.hero.heroImageUrl}
-                onChange={(v) => updateHero("heroImageUrl", v)}
-                placeholder="/images/hero-car.jpg"
-              />
-              <div>
-                <FieldLabel>Stats (4 items)</FieldLabel>
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  {edition.hero.stats.map((stat, i) => (
-                    <div key={i} className="flex flex-col gap-2 rounded-sm border border-border bg-secondary/50 p-3">
-                      <input
-                        value={stat.value}
-                        onChange={(e) => updateHeroStat(i, "value", e.target.value)}
-                        placeholder="Value"
-                        className="w-full rounded-sm border border-border bg-secondary px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none"
-                      />
-                      <input
-                        value={stat.label}
-                        onChange={(e) => updateHeroStat(i, "label", e.target.value)}
-                        placeholder="Label"
-                        className="w-full rounded-sm border border-border bg-secondary px-2 py-1.5 text-xs text-muted-foreground focus:border-primary focus:outline-none"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Section>
-
-          {/* === TICKER === */}
-          <Section title="Marquee Ticker" icon={<span className="text-xs font-bold">///</span>}>
-            <div className="flex flex-col gap-3">
-              {edition.ticker.map((headline, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={headline}
-                    onChange={(e) => updateTicker(i, e.target.value)}
-                    placeholder="Ticker headline..."
-                    className="flex-1 rounded-sm border border-border bg-secondary px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <button
-                    onClick={() => removeTicker(i)}
-                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-sm border border-border text-muted-foreground transition-colors hover:border-destructive hover:text-destructive"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={addTicker}
-                className="flex items-center gap-2 self-start rounded-sm border border-dashed border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                <Plus className="h-4 w-4" />
-                Add Headline
-              </button>
-            </div>
-          </Section>
-
-          {/* === CAR OF THE WEEK === */}
-          <Section title="Car of the Week" icon={<span className="text-xs font-bold">CW</span>}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <TextInput
-                label="Car Name"
-                value={edition.carOfTheWeek.carName}
-                onChange={(v) => updateCOTW("carName", v)}
-              />
-              <TextInput
-                label="Builder Name"
-                value={edition.carOfTheWeek.builderName}
-                onChange={(v) => updateCOTW("builderName", v)}
-              />
-              <TextInput
-                label="Image URL"
-                value={edition.carOfTheWeek.imageUrl}
-                onChange={(v) => updateCOTW("imageUrl", v)}
-              />
-              <TextInput
-                label="Prize Pool"
-                value={edition.carOfTheWeek.prizePool}
-                onChange={(v) => updateCOTW("prizePool", v)}
-              />
-              <TextInput
-                label="Entry Fee"
-                value={edition.carOfTheWeek.entryFee}
-                onChange={(v) => updateCOTW("entryFee", v)}
-              />
-              <TextInput
-                label="Time Left"
-                value={edition.carOfTheWeek.timeLeft}
-                onChange={(v) => updateCOTW("timeLeft", v)}
-              />
-              <NumberInput
-                label="Entries"
-                value={edition.carOfTheWeek.entries}
-                onChange={(v) => updateCOTW("entries", v)}
-                min={0}
-              />
-            </div>
-          </Section>
-
-          {/* === FEATURED BUILDS === */}
-          <Section title="Featured Builds" icon={<span className="text-xs font-bold">FB</span>}>
-            <div className="flex flex-col gap-4">
-              {edition.featuredBuilds.map((build, i) => (
-                <div
-                  key={i}
-                  className="rounded-sm border border-border bg-secondary/30 p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="font-serif text-sm font-bold uppercase text-foreground">
-                      Build {i + 1}
-                    </span>
-                    <button
-                      onClick={() => removeBuild(i)}
-                      className="text-muted-foreground transition-colors hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                    <TextInput
-                      label="Title"
-                      value={build.title}
-                      onChange={(v) => updateBuild(i, "title", v)}
-                    />
-                    <TextInput
-                      label="Owner"
-                      value={build.owner}
-                      onChange={(v) => updateBuild(i, "owner", v)}
-                    />
-                    <TextInput
-                      label="Category"
-                      value={build.category}
-                      onChange={(v) => updateBuild(i, "category", v)}
-                    />
-                    <TextInput
-                      label="Image URL"
-                      value={build.imageUrl}
-                      onChange={(v) => updateBuild(i, "imageUrl", v)}
-                    />
-                    <NumberInput
-                      label="Votes"
-                      value={build.votes}
-                      onChange={(v) => updateBuild(i, "votes", v)}
-                      min={0}
-                    />
-                    <TextInput
-                      label="Edition Tag"
-                      value={build.edition}
-                      onChange={(v) => updateBuild(i, "edition", v)}
-                      placeholder="#22"
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={addBuild}
-                className="flex items-center gap-2 self-start rounded-sm border border-dashed border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                <Plus className="h-4 w-4" />
-                Add Build
-              </button>
-            </div>
-          </Section>
-
-          {/* === TRACK REVIEWS === */}
-          <Section title="Track Reviews" icon={<span className="text-xs font-bold">TR</span>}>
-            <div className="flex flex-col gap-4">
-              {edition.tracks.map((track, i) => (
-                <div
-                  key={i}
-                  className="rounded-sm border border-border bg-secondary/30 p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="font-serif text-sm font-bold uppercase text-foreground">
-                      Track {i + 1}
-                    </span>
-                    <button
-                      onClick={() => removeTrack(i)}
-                      className="text-muted-foreground transition-colors hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                    <TextInput
-                      label="Name"
-                      value={track.name}
-                      onChange={(v) => updateTrack(i, "name", v)}
-                    />
-                    <TextInput
-                      label="Location"
-                      value={track.location}
-                      onChange={(v) => updateTrack(i, "location", v)}
-                    />
-                    <NumberInput
-                      label="Rating"
-                      value={track.rating}
-                      onChange={(v) => updateTrack(i, "rating", v)}
-                      min={0}
-                      max={5}
-                      step={0.1}
-                    />
-                    <TextInput
-                      label="Difficulty"
-                      value={track.difficulty}
-                      onChange={(v) => updateTrack(i, "difficulty", v)}
-                    />
-                    <NumberInput
-                      label="Laps"
-                      value={track.laps}
-                      onChange={(v) => updateTrack(i, "laps", v)}
-                      min={1}
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={addTrack}
-                className="flex items-center gap-2 self-start rounded-sm border border-dashed border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                <Plus className="h-4 w-4" />
-                Add Track
-              </button>
-            </div>
-          </Section>
-
-          {/* === NEWS & ARTICLES === */}
-          <Section title="News & Articles" icon={<span className="text-xs font-bold">NA</span>}>
-            <div className="flex flex-col gap-4">
-              {edition.articles.map((article, i) => (
-                <div
-                  key={i}
-                  className="rounded-sm border border-border bg-secondary/30 p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="font-serif text-sm font-bold uppercase text-foreground">
-                      Article {i + 1}
-                    </span>
-                    <button
-                      onClick={() => removeArticle(i)}
-                      className="text-muted-foreground transition-colors hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <TextInput
-                      label="Category"
-                      value={article.category}
-                      onChange={(v) => updateArticle(i, "category", v)}
-                      placeholder="Update, Event, Guide, Interview..."
-                    />
-                    <TextInput
-                      label="Title"
-                      value={article.title}
-                      onChange={(v) => updateArticle(i, "title", v)}
-                    />
-                    <div className="md:col-span-2">
-                      <TextArea
-                        label="Excerpt"
-                        value={article.excerpt}
-                        onChange={(v) => updateArticle(i, "excerpt", v)}
-                        rows={2}
-                      />
-                    </div>
-                    <TextInput
-                      label="Date"
-                      value={article.date}
-                      onChange={(v) => updateArticle(i, "date", v)}
-                      placeholder="Feb 22, 2026"
-                    />
-                    <TextInput
-                      label="Read Time"
-                      value={article.readTime}
-                      onChange={(v) => updateArticle(i, "readTime", v)}
-                      placeholder="3 min"
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={addArticle}
-                className="flex items-center gap-2 self-start rounded-sm border border-dashed border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                <Plus className="h-4 w-4" />
-                Add Article
-              </button>
-            </div>
-          </Section>
-        </div>
-      </div>
-
-      {/* ---- Sticky Action Bar ---- */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 lg:px-8">
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="flex items-center gap-2 rounded-sm border border-border px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </button>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              className="flex items-center gap-2 rounded-sm border border-border bg-secondary px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-foreground transition-colors hover:bg-secondary/80"
-            >
-              <Save className="h-4 w-4" />
-              {saved ? "Saved!" : "Save Draft"}
-            </button>
-            <button
-              onClick={() => setConfirmPublish(true)}
-              className="flex items-center gap-2 rounded-sm bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <Send className="h-4 w-4" />
-              Publish
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirm Dialogs */}
-      {confirmPublish && (
-        <ConfirmDialog
-          title="Publish Edition"
-          message={`This will make Edition #${edition.editionNumber} the live homepage content. Any previously published edition will be unpublished.`}
-          confirmLabel="Publish Now"
-          onConfirm={handlePublish}
-          onCancel={() => setConfirmPublish(false)}
-        />
-      )}
-      {confirmDelete && (
-        <ConfirmDialog
-          title="Delete Edition"
-          message={`Are you sure you want to permanently delete Edition #${edition.editionNumber}? This action cannot be undone.`}
-          confirmLabel="Delete"
-          onConfirm={handleDelete}
-          onCancel={() => setConfirmDelete(false)}
-        />
-      )}
     </div>
   )
 }

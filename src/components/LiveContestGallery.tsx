@@ -44,7 +44,7 @@ export function LiveContestGallery() {
 
     async function handleVote(entryId: number) {
         if (!user) {
-            alert("You must be logged in (via Dashboard) to vote!")
+            alert("Трябва да сте влезли (през Таблото), за да гласувате!")
             return
         }
 
@@ -58,7 +58,7 @@ export function LiveContestGallery() {
                 await fetchData()
             }
         } catch {
-            alert("Failed to cast vote.")
+            alert("Неуспешно гласуване.")
         } finally {
             setVoteLoadingId(null)
         }
@@ -66,7 +66,7 @@ export function LiveContestGallery() {
 
     async function handleCancel(entryId: number) {
         if (!user) return
-        if (!confirm(`Are you sure you want to cancel your entry? You will be refunded the $${entryFee.toLocaleString()} entry fee.`)) return
+        if (!confirm(`Сигурни ли сте, че искате да отмените участието си? Ще ви бъде възстановена таксата от $${entryFee.toLocaleString()} за участие.`)) return
 
         setCancelLoadingId(entryId)
         try {
@@ -74,11 +74,11 @@ export function LiveContestGallery() {
             if (res.error) {
                 alert(res.error)
             } else {
-                alert(`Entry successfully canceled. $${entryFee.toLocaleString()} refunded.`)
+                alert(`Участието е успешно отменено. $${entryFee.toLocaleString()} възстановени.`)
                 await fetchData()
             }
         } catch {
-            alert("Failed to cancel entry.")
+            alert("Неуспешна отмяна на участието.")
         } finally {
             setCancelLoadingId(null)
         }
@@ -91,10 +91,10 @@ export function LiveContestGallery() {
                 <div className="mb-12 flex flex-col items-center justify-between gap-6 border-b border-border pb-6 md:flex-row">
                     <div>
                         <h2 className="font-serif text-3xl font-bold uppercase italic tracking-wider">
-                            <span className="text-primary">Live</span> Contest Entries
+                            Участници в <span className="text-primary">Конкурса на Живо</span>
                         </h2>
                         <p className="mt-2 text-sm text-muted-foreground max-w-xl">
-                            Vote for your favorite build. You can only vote once per week! The winner takes home the prize pool.
+                            Гласувайте за любимия си проект. Можете да гласувате само веднъж седмично! Победителят печели наградния фонд.
                         </p>
                     </div>
                 </div>
@@ -109,8 +109,8 @@ export function LiveContestGallery() {
                             </div>
                         ) : entries.length === 0 ? (
                             <div className="rounded border border-border border-dashed p-12 text-center bg-secondary/20">
-                                <p className="text-lg font-medium text-muted-foreground">No entries yet this week.</p>
-                                <p className="text-sm text-muted-foreground mt-1">Be the first to submit your build!</p>
+                                <p className="text-lg font-medium text-muted-foreground">Все още няма участници тази седмица.</p>
+                                <p className="text-sm text-muted-foreground mt-1">Бъдете първият, който ще качи своя проект!</p>
                             </div>
                         ) : (
                             <div className="grid gap-6 sm:grid-cols-2">
@@ -139,7 +139,7 @@ export function LiveContestGallery() {
                                             <div className="flex w-full items-center justify-between border-t border-border/50 pt-4 mt-auto">
                                                 <div className="flex items-center gap-2 text-sm">
                                                     <Heart className="h-4 w-4 text-primary fill-primary" />
-                                                    <span className="font-bold">{entry.votesCount} Votes</span>
+                                                    <span className="font-bold">{entry.votesCount} Гласа</span>
                                                 </div>
 
                                                 <div className="flex gap-2">
@@ -148,7 +148,7 @@ export function LiveContestGallery() {
                                                             onClick={() => handleCancel(entry.id)}
                                                             disabled={cancelLoadingId === entry.id}
                                                             className="rounded bg-destructive/10 hover:bg-destructive/20 text-destructive px-3 py-2 transition-colors disabled:opacity-50 border border-destructive/20"
-                                                            title="Cancel Entry"
+                                                            title="Отмени Участие"
                                                         >
                                                             {cancelLoadingId === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                         </button>
@@ -159,7 +159,7 @@ export function LiveContestGallery() {
                                                         disabled={voteLoadingId === entry.id || !user}
                                                         className="rounded bg-secondary hover:bg-secondary/80 px-4 py-2 text-xs font-bold uppercase transition-colors disabled:opacity-50 border border-border"
                                                     >
-                                                        {voteLoadingId === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Vote"}
+                                                        {voteLoadingId === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Гласувай"}
                                                     </button>
                                                 </div>
                                             </div>
@@ -177,12 +177,12 @@ export function LiveContestGallery() {
                                 <UploadForm user={user} onSuccess={fetchData} />
                             ) : (
                                 <div className="rounded border border-border bg-card p-6 shadow-sm text-center">
-                                    <h3 className="font-bold uppercase text-lg mb-3">Want to participate?</h3>
+                                    <h3 className="font-bold uppercase text-lg mb-3">Искате да участвате?</h3>
                                     <p className="text-sm text-muted-foreground mb-6">
-                                        Log in to your dashboard to submit your car and vote.
+                                        Влезте в таблото си, за да качите колата си и да гласувате.
                                     </p>
                                     <a href="/dashboard" className="block w-full rounded bg-primary px-4 py-3 font-bold uppercase text-black text-sm">
-                                        Go to Dashboard
+                                        Към Таблото
                                     </a>
                                 </div>
                             )}

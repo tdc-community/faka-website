@@ -48,10 +48,10 @@ export default function HomePage() {
         <Navbar />
         <div className="flex flex-col items-center justify-center py-32 text-center">
           <h1 className="font-serif text-4xl font-bold uppercase text-foreground">
-            No Data Available
+            Няма Налични Данни
           </h1>
           <p className="mt-4 text-muted-foreground">
-            Please publish a new magazine edition from the Admin Panel.
+            Моля, публикувайте ново издание на списанието от Админ Панела.
           </p>
         </div>
         <Footer />

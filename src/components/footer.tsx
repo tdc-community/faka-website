@@ -15,22 +15,21 @@ export function Footer() {
               </span>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              The ultimate car enthusiast community magazine. Weekly editions,
-              competitions, and the best builds from our community.
+              Най-доброто списание за автомобилни ентусиасти. Седмични издания, състезания и най-добрите проекти от нашата общност.
             </p>
           </div>
 
           {/* Magazine */}
           <div>
             <h3 className="font-serif text-sm font-bold uppercase tracking-wider text-foreground">
-              Magazine
+              Списание
             </h3>
             <ul className="mt-4 space-y-3">
               {[
-                { label: "Live Contest", href: "/#live-contest" },
-                { label: "Dashboard", href: "/dashboard" },
-                { label: "Submit Your Car", href: "/dashboard" },
-                { label: "Editorial", href: "/#news" }
+                { label: "Конкурс на Живо", href: "/#live-contest" },
+                { label: "Табло", href: "/dashboard" },
+                { label: "Качи Своята Кола", href: "/dashboard" },
+                { label: "Редакция", href: "/#news" }
               ].map(
                 (item) => (
                   <li key={item.label}>
@@ -49,14 +48,14 @@ export function Footer() {
           {/* Community */}
           <div>
             <h3 className="font-serif text-sm font-bold uppercase tracking-wider text-foreground">
-              Community
+              Общност
             </h3>
             <ul className="mt-4 space-y-3">
               {[
-                { label: "Car of the Week", href: "/#car-of-the-week" },
-                { label: "Track Reviews", href: "/#tracks" },
-                { label: "Leaderboards", href: "/#live-contest" },
-                { label: "Events", href: "/#news" }
+                { label: "Кола на Седмицата", href: "/#car-of-the-week" },
+                { label: "Ревюта на Писти", href: "/#tracks" },
+                { label: "Класации", href: "/#live-contest" },
+                { label: "Събития", href: "/#news" }
               ].map(
                 (item) => (
                   <li key={item.label}>
@@ -75,7 +74,7 @@ export function Footer() {
           {/* Connect */}
           <div>
             <h3 className="font-serif text-sm font-bold uppercase tracking-wider text-foreground">
-              Connect
+              Свързване
             </h3>
             <ul className="mt-4 space-y-3">
               {[
@@ -102,20 +101,20 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
           <p className="text-xs text-muted-foreground">
-            {"FakaPerformance Magazine. All rights reserved."}
+            {"Списание FakaPerformance. Всички права запазени."}
           </p>
           <div className="flex items-center gap-6">
             <a
               href="#"
               className="text-xs text-muted-foreground transition-colors hover:text-primary"
             >
-              Privacy
+              Поверителност
             </a>
             <a
               href="#"
               className="text-xs text-muted-foreground transition-colors hover:text-primary"
             >
-              Terms
+              Условия
             </a>
           </div>
         </div>

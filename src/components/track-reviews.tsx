@@ -31,15 +31,14 @@ export function TrackReviews({ tracks }: TrackReviewsProps) {
             <div className="mb-3 flex items-center gap-3">
               <MapPin className="h-5 w-5 text-primary" />
               <span className="font-sans text-sm font-semibold uppercase tracking-widest text-primary">
-                Track Reviews
+                Ревюта на Писти
               </span>
             </div>
             <h2 className="font-serif text-4xl font-bold uppercase tracking-tight text-foreground md:text-5xl">
-              Explore the Tracks
+              Разгледайте Пистите
             </h2>
             <p className="mt-4 max-w-lg text-base leading-relaxed text-muted-foreground">
-              Discover the best tracks reviewed by our community. From night
-              circuits to mountain passes, find your next adrenaline rush.
+              Открийте най-добрите писти, оценени от нашата общност. От нощни писти до планински проходи, намерете следващия си адреналин.
             </p>
 
             {/* Track List */}
@@ -84,8 +83,8 @@ export function TrackReviews({ tracks }: TrackReviewsProps) {
       <ComingSoonModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Track Reviews Update"
-        description="The detailed track review pages and interactive maps are currently under development. They will be available in Phase 4!"
+        title="Обновление за Ревюта на Писти"
+        description="Подробните страници с ревюта на писти и интерактивни карти в момента се разработват. Те ще бъдат налични във Фаза 4!"
       />
     </section>
   )

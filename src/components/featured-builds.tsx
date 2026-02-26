@@ -20,18 +20,18 @@ export function FeaturedBuilds({ builds }: FeaturedBuildsProps) {
           <div className="mb-3 flex items-center gap-3">
             <span className="inline-block h-px w-12 bg-primary" />
             <span className="font-sans text-sm font-semibold uppercase tracking-widest text-primary">
-              Community Spotlight
+              Прожектор на Общността
             </span>
           </div>
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <h2 className="font-serif text-4xl font-bold uppercase tracking-tight text-foreground md:text-5xl lg:text-6xl">
-              Featured Builds
+              Избрани Проекти
             </h2>
             <a
               href="#"
               className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-primary transition-colors hover:text-primary/80"
             >
-              View All Builds
+              Виж Всички Проекти
               <ArrowRight className="h-4 w-4" />
             </a>
           </div>
@@ -58,7 +58,7 @@ export function FeaturedBuilds({ builds }: FeaturedBuildsProps) {
                     {build.category}
                   </span>
                   <span className="rounded-sm bg-primary/90 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-primary-foreground backdrop-blur-sm">
-                    Edition {build.edition}
+                    Издание {build.edition}
                   </span>
                 </div>
               </div>
@@ -68,20 +68,20 @@ export function FeaturedBuilds({ builds }: FeaturedBuildsProps) {
                   {build.title}
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Built by{" "}
+                  Построена от{" "}
                   <span className="font-medium text-foreground">{build.owner}</span>
                 </p>
 
                 <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
                   <button className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
                     <Heart className="h-4 w-4" />
-                    <span>{build.votes} votes</span>
+                    <span>{build.votes} гласа</span>
                   </button>
                   <a
                     href="#"
                     className="flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-primary transition-colors hover:text-primary/80"
                   >
-                    View
+                    Виж
                     <ArrowRight className="h-3.5 w-3.5" />
                   </a>
                 </div>

@@ -1,10 +1,23 @@
 import type { MagazineEdition } from "./magazine-store";
 
+export interface Role {
+    id: number;
+    name: string;
+    color: string;
+    permissions: string;
+    createdAt: string;
+    _count?: { users: number };
+}
+
 export interface UserProfile {
     id: number;
     username: string;
     fp_code: string;
     balance: number;
+    iban?: string | null;
+    roles?: Role[];
+    createdAt?: string;
+    _count?: { entries: number; votes: number; transactions: number };
 }
 
 export interface SiteSettings {
@@ -29,11 +42,29 @@ export const api = {
         return res.json();
     },
 
-    async register(username: string): Promise<{ message?: string; fp_code?: string; error?: string }> {
+    async register(username: string, password: string): Promise<{ message?: string; fp_code?: string; error?: string }> {
         const res = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username })
+            body: JSON.stringify({ username, password })
+        });
+        return res.json();
+    },
+
+    async login(username: string, password: string): Promise<UserProfile | { error: string }> {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        return res.json();
+    },
+
+    async saveIban(username: string, iban: string): Promise<{ message?: string; error?: string }> {
+        const res = await fetch(`/api/user/${username}/iban`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ iban })
         });
         return res.json();
     },
@@ -43,11 +74,11 @@ export const api = {
         return res.json();
     },
 
-    async withdraw(userId: number, amount: number, iban: string): Promise<{ message?: string; new_balance?: number; error?: string }> {
+    async withdraw(userId: number, amount: number): Promise<{ message?: string; new_balance?: number; error?: string }> {
         const res = await fetch('/api/frontend/withdraw', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, amount, iban })
+            body: JSON.stringify({ user_id: userId, amount })
         });
         return res.json();
     },
@@ -119,6 +150,60 @@ export const api = {
     async deleteEdition(id: string): Promise<{ success: boolean; error?: string }> {
         const res = await fetch(`/api/editions/${id}`, {
             method: 'DELETE'
+        });
+        return res.json();
+    },
+
+    // --- ROLE & USER MANAGEMENT API ---
+    async adminLogin(password: string): Promise<{ message?: string; token?: string; error?: string }> {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        return res.json();
+    },
+
+    async getRoles(): Promise<Role[] | { error: string }> {
+        const res = await fetch('/api/admin/roles');
+        return res.json();
+    },
+
+    async createRole(data: Partial<Role>): Promise<Role | { error: string }> {
+        const res = await fetch('/api/admin/roles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+
+    async updateRole(id: number, data: Partial<Role>): Promise<Role | { error: string }> {
+        const res = await fetch(`/api/admin/roles/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+
+    async deleteRole(id: number): Promise<{ success: boolean; error?: string }> {
+        const res = await fetch(`/api/admin/roles/${id}`, {
+            method: 'DELETE'
+        });
+        return res.json();
+    },
+
+    async getUsers(): Promise<UserProfile[] | { error: string }> {
+        const res = await fetch('/api/admin/users');
+        return res.json();
+    },
+
+    async updateUserRoles(userId: number, roleIds: number[]): Promise<UserProfile | { error: string }> {
+        const res = await fetch(`/api/admin/users/${userId}/roles`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roleIds })
         });
         return res.json();
     }

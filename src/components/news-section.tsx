@@ -17,18 +17,18 @@ export function NewsSection({ articles }: NewsSectionProps) {
           <div className="mb-3 flex items-center gap-3">
             <Newspaper className="h-5 w-5 text-primary" />
             <span className="font-sans text-sm font-semibold uppercase tracking-widest text-primary">
-              Latest
+              Последни
             </span>
           </div>
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <h2 className="font-serif text-4xl font-bold uppercase tracking-tight text-foreground md:text-5xl lg:text-6xl">
-              News & Articles
+              Новини и Статии
             </h2>
             <button
               onClick={() => setModalOpen(true)}
               className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-primary transition-colors hover:text-primary/80"
             >
-              View All News
+              Виж Всички Новини
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -58,10 +58,10 @@ export function NewsSection({ articles }: NewsSectionProps) {
               </p>
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
-                  {article.readTime} read
+                  {article.readTime} четене
                 </span>
                 <span className="flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                  Read
+                  Чети
                   <ArrowRight className="h-3.5 w-3.5" />
                 </span>
               </div>
@@ -73,8 +73,8 @@ export function NewsSection({ articles }: NewsSectionProps) {
       <ComingSoonModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="News Portal Update"
-        description="The full news portal with expanded articles and builder interviews is coming in the next major update!"
+        title="Обновление на Портала за Новини"
+        description="Пълният портал за новини с разширени статии и интервюта със създатели идва в следващия голям ъпдейт!"
       />
     </section>
   )

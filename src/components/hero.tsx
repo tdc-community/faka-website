@@ -26,7 +26,7 @@ export function Hero({ data, editionNumber }: HeroProps) {
           <div className="mb-4 flex items-center gap-3">
             <span className="inline-block h-px w-12 bg-primary" />
             <span className="font-sans text-sm font-semibold uppercase tracking-widest text-primary">
-              Weekly Edition #{editionNumber}
+              Седмично Издание #{editionNumber}
             </span>
           </div>
 
@@ -53,13 +53,13 @@ export function Hero({ data, editionNumber }: HeroProps) {
               href="#car-of-the-week"
               className="rounded-sm bg-primary px-8 py-4 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Car of the Week
+              Кола на Седмицата
             </a>
             <a
               href="#live-contest"
               className="rounded-sm border border-border bg-secondary/50 px-8 py-4 text-sm font-bold uppercase tracking-wide text-foreground transition-colors hover:bg-secondary"
             >
-              Live Contest
+              Конкурс на Живо
             </a>
           </div>
         </div>

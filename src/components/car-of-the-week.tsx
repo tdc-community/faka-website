@@ -1,7 +1,7 @@
 "use client"
 
 
-import { Trophy, Timer, Users, DollarSign } from "lucide-react"
+import { Trophy, Timer, Users, DollarSign, Star } from "lucide-react"
 import type { CarOfTheWeekData } from "@/lib/magazine-store"
 
 interface CarOfTheWeekProps {
@@ -18,18 +18,18 @@ export function CarOfTheWeek({ data }: CarOfTheWeekProps) {
             <div className="mb-3 flex items-center gap-3">
               <Trophy className="h-5 w-5 text-primary" />
               <span className="font-sans text-sm font-semibold uppercase tracking-widest text-primary">
-                Competition
+                Състезание
               </span>
             </div>
             <h2 className="font-serif text-4xl font-bold uppercase tracking-tight text-foreground md:text-5xl lg:text-6xl">
-              Car of the Week
+              Кола на Седмицата
             </h2>
           </div>
           <a
             href="/#live-contest"
             className="rounded-sm bg-primary px-6 py-3 text-center text-sm font-bold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 md:self-end"
           >
-            Enter Competition - {data.entryFee}
+            Участвай в Състезанието - {data.entryFee}
           </a>
         </div>
 
@@ -46,7 +46,7 @@ export function CarOfTheWeek({ data }: CarOfTheWeekProps) {
             </div>
             <div className="absolute left-4 top-4">
               <span className="rounded-sm bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-primary-foreground">
-                Current Winner
+                Текущ Победител
               </span>
             </div>
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/90 to-transparent p-6">
@@ -54,7 +54,7 @@ export function CarOfTheWeek({ data }: CarOfTheWeekProps) {
                 {data.carName}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Built by {data.builderName}
+                Построена от {data.builderName}
               </p>
             </div>
           </div>
@@ -66,27 +66,26 @@ export function CarOfTheWeek({ data }: CarOfTheWeekProps) {
               <div className="mb-4 flex items-center gap-2 text-primary">
                 <DollarSign className="h-5 w-5" />
                 <span className="text-sm font-bold uppercase tracking-wider">
-                  Prize Pool
+                  Награден Фонд
                 </span>
               </div>
               <div className="font-serif text-5xl font-bold text-foreground">
                 {data.prizePool}
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Weekly prize for the most impressive build voted by
-                the community.
+                Седмична награда за най-впечатляващия проект, избран от общността.
               </p>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="rounded-sm border border-border bg-card p-5">
                 <Timer className="mb-2 h-5 w-5 text-primary" />
                 <div className="font-serif text-2xl font-bold text-foreground">
                   {data.timeLeft}
                 </div>
                 <div className="mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Time Left
+                  Оставащо Време
                 </div>
               </div>
               <div className="rounded-sm border border-border bg-card p-5">
@@ -95,7 +94,16 @@ export function CarOfTheWeek({ data }: CarOfTheWeekProps) {
                   {data.entries}
                 </div>
                 <div className="mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Entries
+                  Участници
+                </div>
+              </div>
+              <div className="rounded-sm border border-border bg-card p-5">
+                <Star className="mb-2 h-5 w-5 text-primary" />
+                <div className="font-serif text-2xl font-bold text-foreground">
+                  {data.votes}
+                </div>
+                <div className="mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Гласове
                 </div>
               </div>
             </div>
@@ -105,7 +113,7 @@ export function CarOfTheWeek({ data }: CarOfTheWeekProps) {
               href="/#live-contest"
               className="block flex items-center justify-center text-center w-full rounded-sm border border-primary bg-primary/10 px-6 py-4 text-sm font-bold uppercase tracking-wide text-primary transition-colors hover:bg-primary/20"
             >
-              Vote for this Build
+              Гласувай за Този Проект
             </a>
           </div>
         </div>

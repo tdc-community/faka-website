@@ -15,6 +15,7 @@ export interface CarOfTheWeekData {
   entryFee: string
   timeLeft: string
   entries: number
+  votes: number
 }
 
 export interface FeaturedBuild {
@@ -59,25 +60,25 @@ export interface MagazineEdition {
 // ---- Default data (matches current hardcoded values) ----
 
 const defaultHero: HeroData = {
-  headline: "Where Performance Meets Community",
+  headline: "Където Производителността Среща Общността",
   subheadline:
-    "Your weekly source for the best community builds, track reviews, and the hottest cars. Compete for Car of the Week and win prizes.",
+    "Вашият седмичен източник за най-добрите проекти на общността, ревюта на писти и най-горещите коли. Състезавайте се за Кола на Седмицата и печелете награди.",
   heroImageUrl: "/images/hero-car.jpg",
   stats: [
-    { value: "24", label: "Weekly Editions" },
-    { value: "156", label: "Featured Cars" },
-    { value: "$10K", label: "Weekly Prize" },
-    { value: "$1K", label: "Entry Fee" },
+    { value: "24", label: "Седмични Издания" },
+    { value: "156", label: "Избрани Коли" },
+    { value: "$10K", label: "Седмична Награда" },
+    { value: "$1K", label: "Такса Участие" },
   ],
 }
 
 const defaultTicker: string[] = [
-  "NEW: Turbo kit drop this weekend",
-  "CAR OF THE WEEK: Shadow RSX by IwanoW wins $10,000",
-  "DRAG RACE: Sunday Night event - register now",
-  "EDITION #24 is LIVE - check out the latest builds",
-  "TRACK REVIEW: Midnight Circuit rated 4.8 stars",
-  "BUILDER SPOTLIGHT: Raw talks about his 1000HP build",
+  "НОВО: Турбо китове налични този уикенд",
+  "КОЛА НА СЕДМИЦАТА: Shadow RSX от IwanoW печели $10,000",
+  "ДРАГ СЪСТЕЗАНИЕ: Събитие в неделя вечер - регистрирайте се сега",
+  "ИЗДАНИЕ #24 е НА ЖИВО - вижте най-новите проекти",
+  "РЕВЮ НА ПИСТА: Midnight Circuit оценена с 4.8 звезди",
+  "ИНТЕРВЮ: Raw говори за своя проект с 1000 к.с.",
 ]
 
 const defaultCarOfTheWeek: CarOfTheWeekData = {
@@ -88,13 +89,14 @@ const defaultCarOfTheWeek: CarOfTheWeekData = {
   entryFee: "$1,000",
   timeLeft: "3d 14h",
   entries: 47,
+  votes: 189,
 }
 
 const defaultFeaturedBuilds: FeaturedBuild[] = [
   {
     title: "Alpine Thunder GT",
     owner: "Raw",
-    category: "European",
+    category: "Европейски",
     imageUrl: "/images/featured-1.jpg",
     votes: 234,
     edition: "#22",
@@ -102,7 +104,7 @@ const defaultFeaturedBuilds: FeaturedBuild[] = [
   {
     title: "Midnight Stallion",
     owner: "elempius",
-    category: "Muscle",
+    category: "Мъсъл",
     imageUrl: "/images/featured-2.jpg",
     votes: 189,
     edition: "#21",
@@ -110,7 +112,7 @@ const defaultFeaturedBuilds: FeaturedBuild[] = [
   {
     title: "Dust Devil Rally",
     owner: "Coble2537",
-    category: "Rally",
+    category: "Рали",
     imageUrl: "/images/featured-3.jpg",
     votes: 312,
     edition: "#20",
@@ -120,59 +122,59 @@ const defaultFeaturedBuilds: FeaturedBuild[] = [
 const defaultTracks: TrackData[] = [
   {
     name: "Midnight Circuit",
-    location: "Downtown",
+    location: "Център",
     rating: 4.8,
-    difficulty: "Expert",
+    difficulty: "Експерт",
     laps: 12,
   },
   {
     name: "Mountain Pass",
-    location: "Highlands",
+    location: "Планини",
     rating: 4.5,
-    difficulty: "Intermediate",
+    difficulty: "Средно",
     laps: 8,
   },
   {
     name: "Desert Storm Rally",
-    location: "Outskirts",
+    location: "Околности",
     rating: 4.9,
-    difficulty: "Advanced",
+    difficulty: "Напреднали",
     laps: 6,
   },
 ]
 
 const defaultArticles: ArticleData[] = [
   {
-    category: "Update",
-    title: "New Performance Parts Drop This Weekend",
+    category: "Обновление",
+    title: "Нови Части Налични Този Уикенд",
     excerpt:
-      "The latest batch of turbo kits and exhaust systems are available. Check out what's new for your build.",
-    date: "Feb 22, 2026",
-    readTime: "3 min",
+      "Най-новата партида турбо китове и изпускателни системи е налична. Вижте какво ново има за вашия проект.",
+    date: "22 Фев, 2026",
+    readTime: "3 мин",
   },
   {
-    category: "Event",
-    title: "Community Drag Race - Sunday Night",
+    category: "Събитие",
+    title: "Драг Състезание на Общността - Неделя Вечер",
     excerpt:
-      "Line up your fastest builds for the weekly drag event. Registration opens Friday at 8pm.",
-    date: "Feb 21, 2026",
-    readTime: "2 min",
+      "Подгответе най-бързите си коли за седмичното драг събитие. Регистрацията отваря в петък в 20:00 ч.",
+    date: "21 Фев, 2026",
+    readTime: "2 мин",
   },
   {
-    category: "Guide",
-    title: "Engine Swap Guide: Everything You Need",
+    category: "Ръководство",
+    title: "Ръководство за Смяна на Двигател: Всичко, Което Трябва да Знаете",
     excerpt:
-      "A complete walkthrough on engine swaps. From choosing the right motor to tuning for max output.",
-    date: "Feb 20, 2026",
-    readTime: "8 min",
+      "Пълно ръководство за смяна на двигатели. От избора на правилния мотор до настройката за максимална мощност.",
+    date: "20 Фев, 2026",
+    readTime: "8 мин",
   },
   {
-    category: "Interview",
-    title: "Builder Spotlight: Raw on His 1000HP Build",
+    category: "Интервю",
+    title: "Прожектор: Raw Говори за Своя Проект с 1000 к.с.",
     excerpt:
-      "We sit down with Raw to talk about his insane build process and what's next in his garage.",
-    date: "Feb 19, 2026",
-    readTime: "5 min",
+      "Сядаме с Raw, за да поговорим за неговия безумен процес на изграждане и какво следва в гаража му.",
+    date: "19 Фев, 2026",
+    readTime: "5 мин",
   },
 ]
 
